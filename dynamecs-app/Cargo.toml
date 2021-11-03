@@ -1,0 +1,13 @@
+[package]
+name = "dynamecs-app"
+authors = [ "Andreas Longva" ]
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[dependencies]
+dynamecs = { path = "../dynamecs" }
+structopt = "0.3.22"
+serde = "1.0.127"
+serde_json = "1.0.66"
+log = "0.4.14"
