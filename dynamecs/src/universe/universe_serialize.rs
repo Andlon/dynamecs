@@ -1,11 +1,11 @@
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Mutex;
 
+use eyre::eyre;
 use once_cell::sync::Lazy;
 use serde::de::DeserializeSeed;
 
@@ -13,7 +13,8 @@ use crate::serialization::EntitySerializationMap;
 use crate::universe::TaggedTypeErasedStorage;
 use crate::{Storage, StorageFactory, Universe};
 
-static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageFactory>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageFactory>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RegistrationStatus {
@@ -24,8 +25,10 @@ pub enum RegistrationStatus {
     Replaced,
 }
 
-pub fn register_factory(factory: Box<dyn StorageFactory>) -> Result<RegistrationStatus, Box<dyn Error>> {
-    let mut hash_map = REGISTRY.lock()?;
+pub fn register_factory(factory: Box<dyn StorageFactory>) -> eyre::Result<RegistrationStatus> {
+    let mut hash_map = REGISTRY
+        .lock()
+        .map_err(|_| eyre!("failed to obtain registry lock"))?;
     // TODO: Handle collision, i.e. if the tag has already been registered
     if hash_map.insert(factory.storage_tag(), factory).is_some() {
         Ok(RegistrationStatus::Replaced)
@@ -34,7 +37,7 @@ pub fn register_factory(factory: Box<dyn StorageFactory>) -> Result<Registration
     }
 }
 
-pub fn register_storage<S>() -> Result<RegistrationStatus, Box<dyn Error>>
+pub fn register_storage<S>() -> eyre::Result<RegistrationStatus>
 where
     S: Storage,
 {
@@ -42,11 +45,13 @@ where
     register_factory(factory)
 }
 
-fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageFactory) -> R) -> Result<R, Box<dyn Error>> {
-    let hash_map = REGISTRY.lock().map_err(Box::<dyn Error>::from)?;
+fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageFactory) -> R) -> eyre::Result<R> {
+    let hash_map = REGISTRY
+        .lock()
+        .map_err(|_| eyre!("failed to obtain registry lock"))?;
     let factory = hash_map
         .get(tag)
-        .ok_or_else(|| format!("no factory registered for given tag {}", tag))?;
+        .ok_or_else(|| eyre!("no factory registered for given tag {}", tag))?;
     Ok(f(factory.deref()))
 }
 
@@ -101,16 +106,16 @@ impl<'a, 'b, 'de> serde::de::Visitor<'de> for &'b mut TaggedStorage<'a> {
             .ok_or_else(|| "missing tag in sequence")
             .map_err(serde::de::Error::custom)?;
 
-        look_up_factory(&tag, |factory| -> Result<_, Box<dyn Error>> {
+        look_up_factory(&tag, |factory| -> eyre::Result<_> {
             let wrapper = FactoryWrapper {
                 factory: factory.deref(),
                 id_map: self.id_map,
             };
 
             let storage: Box<dyn Any> = seq
-                .next_element_seed(wrapper)?
-                .ok_or_else(|| "missing storage in sequence")
-                .map_err(Box::<dyn Error>::from)?;
+                .next_element_seed(wrapper)
+                .map_err(|e| eyre!("{}", e))?
+                .ok_or_else(|| eyre!("missing storage in sequence"))?;
             Ok(storage)
         })
         // First set of errors is error from locking and looking up the factory
@@ -135,15 +140,18 @@ impl<'de> serde::de::Visitor<'de> for StorageContainerVisitor2 {
         A: serde::de::SeqAccess<'de>,
     {
         let mut storages = HashMap::new();
-        let mut tagged = TaggedStorage { id_map: &mut self.0 };
+        let mut tagged = TaggedStorage {
+            id_map: &mut self.0,
+        };
 
         while let Some((tag, storage)) = seq.next_element_seed(&mut tagged)? {
-            let type_id = look_up_factory(&tag, |factory| factory.storage_type_id()).map_err(|err| {
-                serde::de::Error::custom(format!(
-                    "No factory registered for tag. Cannot deserialize. Internal error: {}",
-                    err
-                ))
-            })?;
+            let type_id =
+                look_up_factory(&tag, |factory| factory.storage_type_id()).map_err(|err| {
+                    serde::de::Error::custom(format!(
+                        "No factory registered for tag. Cannot deserialize. Internal error: {}",
+                        err
+                    ))
+                })?;
             storages.insert(type_id, TaggedTypeErasedStorage { tag, storage });
         }
 

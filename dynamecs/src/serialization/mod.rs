@@ -12,7 +12,10 @@ pub use generic_factory::*;
 pub struct SerializableEntity(pub(crate) u64);
 
 impl<'de> EntityDeserialize<'de> for Entity {
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        id_map: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -41,7 +44,9 @@ pub struct EntitySerializationMap {
 
 impl EntitySerializationMap {
     pub(crate) fn new() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     pub fn deserialize_entity(&mut self, id: SerializableEntity) -> Entity {
@@ -52,7 +57,10 @@ impl EntitySerializationMap {
 /// An extension of serde's `Deserialize` that allows deserialization of types containing
 /// instances `Entity` (which are not deserializable)
 pub trait EntityDeserialize<'de>: Sized {
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        id_map: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>;
 }
@@ -61,7 +69,10 @@ impl<'de, T> EntityDeserialize<'de> for T
 where
     T: serde::Deserialize<'de>,
 {
-    fn entity_deserialize<D>(deserializer: D, _: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        _: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

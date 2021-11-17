@@ -1,7 +1,7 @@
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage, VecStorage};
 use dynamecs::{Component, Universe};
+use eyre::eyre;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
@@ -94,10 +94,10 @@ pub fn get_step_index(state: &Universe) -> StepIndex {
         .clone()
 }
 
-pub fn try_get_timestep(state: &Universe) -> Result<TimeStep, Box<dyn Error>> {
+pub fn try_get_timestep(state: &Universe) -> eyre::Result<TimeStep> {
     let storage = state
         .try_get_component_storage::<TimeStep>()
-        .ok_or_else(|| "Did not find TimeStep component in Universe instance.")?;
+        .ok_or_else(|| eyre!("component TimeStep not found in Universe instance"))?;
     Ok(storage.get_component().clone())
 }
 
@@ -111,9 +111,9 @@ impl Component for DynamecsAppSettings {
     type Storage = ImmutableSingularStorage<Self>;
 }
 
-pub fn try_get_settings(state: &Universe) -> Result<&DynamecsAppSettings, Box<dyn Error>> {
+pub fn try_get_settings(state: &Universe) -> eyre::Result<&DynamecsAppSettings> {
     let storage = state
         .try_get_component_storage::<DynamecsAppSettings>()
-        .ok_or_else(|| "Did not find Dynamecs app settings component in Universe instance.")?;
+        .ok_or_else(|| eyre!("component DynamecsAppSettings not found in Universe instance"))?;
     Ok(storage.get_component())
 }

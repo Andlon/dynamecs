@@ -1,5 +1,5 @@
 //! Generic adapters for systems.
-use std::error::Error;
+use eyre::eyre;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
@@ -8,7 +8,7 @@ use crate::{System, Universe};
 /// A system that runs only once and executes its contained closure
 pub struct RunOnceSystem<F>
 where
-    F: FnOnce(&Universe) -> Result<(), Box<dyn Error>>,
+    F: FnOnce(&Universe) -> eyre::Result<()>,
 {
     pub closure: Option<F>,
     has_run: bool,
@@ -17,7 +17,7 @@ where
 /// System that uses a closure to determine if a system should be run
 pub struct FilterSystem<P, S>
 where
-    P: FnMut(&Universe) -> Result<bool, Box<dyn Error>>,
+    P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
     pub predicate: P,
@@ -29,7 +29,7 @@ pub struct SystemCollection(pub Vec<Box<dyn System>>);
 
 impl<F> Debug for RunOnceSystem<F>
 where
-    F: FnOnce(&Universe) -> Result<(), Box<dyn Error>>,
+    F: FnOnce(&Universe) -> eyre::Result<()>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RunOnceSystem(has_run: {})", self.has_run)
@@ -38,7 +38,7 @@ where
 
 impl<F> RunOnceSystem<F>
 where
-    F: FnOnce(&Universe) -> Result<(), Box<dyn Error>>,
+    F: FnOnce(&Universe) -> eyre::Result<()>,
 {
     pub fn new(closure: F) -> Self {
         RunOnceSystem {
@@ -50,7 +50,7 @@ where
 
 impl<F> Display for RunOnceSystem<F>
 where
-    F: FnOnce(&Universe) -> Result<(), Box<dyn Error>>,
+    F: FnOnce(&Universe) -> eyre::Result<()>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RunOnceSystem(has_run: {})", self.has_run)
@@ -59,18 +59,15 @@ where
 
 impl<F> System for RunOnceSystem<F>
 where
-    F: FnOnce(&Universe) -> Result<(), Box<dyn Error>>,
+    F: FnOnce(&Universe) -> eyre::Result<()>,
 {
     fn name(&self) -> String {
         todo!("Should probably take name as an (optional) constructor input")
     }
 
-    fn run(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>> {
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if !self.has_run {
-            let ret = (self
-                .closure
-                .take()
-                .ok_or_else(|| Box::<dyn Error>::from("Closure gone"))?)(data)?;
+            let ret = (self.closure.take().ok_or_else(|| eyre!("Closure gone"))?)(data)?;
             self.has_run = true;
             Ok(ret)
         } else {
@@ -81,7 +78,7 @@ where
 
 impl<P, S> Debug for FilterSystem<P, S>
 where
-    P: FnMut(&Universe) -> Result<bool, Box<dyn Error>>,
+    P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -91,7 +88,7 @@ where
 
 impl<P, S> Display for FilterSystem<P, S>
 where
-    P: FnMut(&Universe) -> Result<bool, Box<dyn Error>>,
+    P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -101,14 +98,14 @@ where
 
 impl<P, S> System for FilterSystem<P, S>
 where
-    P: FnMut(&Universe) -> Result<bool, Box<dyn Error>>,
+    P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
     fn name(&self) -> String {
         todo!("Should probably take name as optional parameter to constructor")
     }
 
-    fn run(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>> {
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if (self.predicate)(data)? {
             self.system.run(data)
         } else {
@@ -141,7 +138,7 @@ impl System for SystemCollection {
         collection_name
     }
 
-    fn run(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>> {
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         for s in self.0.iter_mut() {
             s.run(data)?;
         }

@@ -1,8 +1,8 @@
 use std::any::{Any, TypeId};
-use std::error::Error;
 use std::marker::PhantomData;
 
 use erased_serde::Serialize;
+use eyre::eyre;
 
 use crate::serialization::{EntityDeserialize, EntitySerializationMap};
 use crate::StorageFactory;
@@ -14,7 +14,9 @@ pub struct GenericFactory<Storage> {
 
 impl<Storage> GenericFactory<Storage> {
     pub fn new() -> Self {
-        Self { marker: PhantomData }
+        Self {
+            marker: PhantomData,
+        }
     }
 }
 
@@ -34,18 +36,18 @@ where
         TypeId::of::<Storage>()
     }
 
-    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> Result<&'a dyn Serialize, Box<dyn Error>> {
+    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> eyre::Result<&'a dyn Serialize> {
         storage
             .downcast_ref::<Storage>()
             .map(|storage| storage as &dyn Serialize)
-            .ok_or_else(|| Box::from("provided storage is not known to factory"))
+            .ok_or_else(|| eyre!("provided storage is not known to factory"))
     }
 
     fn deserialize_storage(
         &self,
         deserializer: &mut dyn erased_serde::Deserializer,
         id_map: &mut EntitySerializationMap,
-    ) -> Result<Box<dyn Any>, Box<dyn Error>> {
+    ) -> eyre::Result<Box<dyn Any>> {
         let storage = Storage::entity_deserialize(deserializer, id_map)?;
         Ok(Box::new(storage))
     }

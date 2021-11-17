@@ -4,9 +4,9 @@ use crate::components::{
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
 use dynamecs::{Component, Systems, Universe};
+use eyre::eyre;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -60,9 +60,9 @@ impl<Config> DynamecsApp<Config> {
         }
     }
 
-    pub fn with_scenario_initializer<I>(&mut self, initializer: I) -> Result<&mut Self, Box<dyn Error>>
+    pub fn with_scenario_initializer<I>(&mut self, initializer: I) -> eyre::Result<&mut Self>
     where
-        I: FnOnce(&Config) -> Result<Scenario, Box<dyn Error>>,
+        I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
         let mut scenario = initializer(&self.config)?;
         let app_settings = DynamecsAppSettings {
@@ -82,7 +82,7 @@ impl<Config> DynamecsApp<Config> {
         Ok(self)
     }
 
-    pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&mut self) -> eyre::Result<()> {
         if let Some(scenario) = &mut self.scenario {
             info!("Starting simulation of scenario \"{}\"", scenario.name());
             loop {
@@ -124,7 +124,9 @@ impl<Config> DynamecsApp<Config> {
                 scenario.post_systems.run_all(state)?;
             }
         } else {
-            Err(Box::from("Cannot run scenario: no scenario initializer provided"))
+            Err(eyre!(
+                "cannot run scenario: no scenario initializer provided",
+            ))
         }
     }
 }
@@ -142,7 +144,10 @@ fn get_time_step_or_set_default(state: &mut Universe) -> TimeStep {
         storage.get_component().clone()
     } else {
         let default_dt = state.get_component_storage::<TimeStep>().get_component();
-        info!("No time step configured. Using default dt = {}", default_dt.0);
+        info!(
+            "No time step configured. Using default dt = {}",
+            default_dt.0
+        );
         default_dt.clone()
     }
 }
@@ -172,7 +177,7 @@ struct CliOptions {
 }
 
 impl DynamecsApp<()> {
-    pub fn configure_from_cli<Config>() -> Result<DynamecsApp<Config>, Box<dyn Error>>
+    pub fn configure_from_cli<Config>() -> eyre::Result<DynamecsApp<Config>>
     where
         Config: Default + Serialize,
         for<'de> Config: Deserialize<'de>,
@@ -200,7 +205,7 @@ impl DynamecsApp<()> {
 
         if let Some(dt) = opt.dt {
             if dt <= 0.0 {
-                return Err(Box::from("Time step dt must be positive"));
+                return Err(eyre!("time step dt must be positive"));
             }
         }
 

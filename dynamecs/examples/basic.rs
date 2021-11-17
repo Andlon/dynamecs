@@ -1,8 +1,6 @@
 use dynamecs::storages::VecStorage;
 use dynamecs::{register_component, Component, Entity, Universe};
 
-use std::error::Error;
-
 use serde::{Deserialize, Serialize};
 
 use serde_json;
@@ -14,7 +12,7 @@ impl Component for TestComponent {
     type Storage = VecStorage<Self>;
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> eyre::Result<()> {
     register_component::<TestComponent>()?;
 
     let mut universe = Universe::default();

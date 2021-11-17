@@ -142,7 +142,10 @@ fn universe_join_is_consistent_with_join() {
     // Just check that the results are consistent with what we expect for one example of each case shared/mutable.
     // The join operation itself is more thoroughly tested separately
     let abc_join: Vec<_> = universe.join::<(&A, &B, &C)>().collect();
-    assert_eq!(abc_join, vec![(v, &A(1), &B(1), &C(1)), (x, &A(2), &B(2), &C(2))]);
+    assert_eq!(
+        abc_join,
+        vec![(v, &A(1), &B(1), &C(1)), (x, &A(2), &B(2), &C(2))]
+    );
 
     let abc_join_mut: Vec<_> = universe.join_mut::<(&mut A, &mut B, &mut C)>().collect();
     assert_eq!(

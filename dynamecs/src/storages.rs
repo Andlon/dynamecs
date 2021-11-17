@@ -138,13 +138,19 @@ impl<Component> VecStorage<Component> {
 // TODO: Move to vec_storage module?
 pub struct VecStorageEntityComponentIter<'a, Component> {
     // We keep the inner iterator as an implementation detail so that we can swap it out if required later on
-    inner_iter: std::iter::Zip<std::iter::Copied<std::slice::Iter<'a, Entity>>, std::slice::Iter<'a, Component>>,
+    inner_iter: std::iter::Zip<
+        std::iter::Copied<std::slice::Iter<'a, Entity>>,
+        std::slice::Iter<'a, Component>,
+    >,
 }
 
 // TODO: Move to vec_storage module?
 pub struct VecStorageEntityComponentIterMut<'a, Component> {
     // We keep the inner iterator as an implementation detail so that we can swap it out if required later on
-    inner_iter: std::iter::Zip<std::iter::Copied<std::slice::Iter<'a, Entity>>, std::slice::IterMut<'a, Component>>,
+    inner_iter: std::iter::Zip<
+        std::iter::Copied<std::slice::Iter<'a, Entity>>,
+        std::slice::IterMut<'a, Component>,
+    >,
 }
 
 impl<'a, Component> Iterator for VecStorageEntityComponentIter<'a, Component> {
@@ -198,7 +204,10 @@ impl<'de, Component> EntityDeserialize<'de> for VecStorage<Component>
 where
     Component: serde::Deserialize<'de>,
 {
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        id_map: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -232,7 +241,10 @@ impl<'de, Component> EntityDeserialize<'de> for SingularStorage<Component>
 where
     Component: EntityDeserialize<'de>,
 {
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        id_map: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -262,7 +274,10 @@ impl<'de, Component> EntityDeserialize<'de> for ImmutableSingularStorage<Compone
 where
     Component: EntityDeserialize<'de>,
 {
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
+    fn entity_deserialize<D>(
+        deserializer: D,
+        id_map: &mut EntitySerializationMap,
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

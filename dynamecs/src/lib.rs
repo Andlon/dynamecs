@@ -1,5 +1,4 @@
 use std::any::{Any, TypeId};
-use std::error::Error;
 use std::fmt::Debug;
 
 pub use entity::*;
@@ -19,14 +18,16 @@ pub mod join;
 pub trait StorageFactory: Send + Sync {
     fn storage_tag(&self) -> String;
 
-    fn serializable_storage<'a>(&self, storage: &'a dyn Any)
-        -> Result<&'a dyn erased_serde::Serialize, Box<dyn Error>>;
+    fn serializable_storage<'a>(
+        &self,
+        storage: &'a dyn Any,
+    ) -> eyre::Result<&'a dyn erased_serde::Serialize>;
 
     fn deserialize_storage(
         &self,
         deserializer: &mut dyn erased_serde::Deserializer,
         id_map: &mut EntitySerializationMap,
-    ) -> Result<Box<dyn Any>, Box<dyn Error>>;
+    ) -> eyre::Result<Box<dyn Any>>;
 
     fn storage_type_id(&self) -> TypeId;
 }
@@ -64,7 +65,7 @@ pub trait Component: 'static {
     type Storage: Storage;
 }
 
-pub fn register_component<C>() -> Result<RegistrationStatus, Box<dyn Error>>
+pub fn register_component<C>() -> eyre::Result<RegistrationStatus>
 where
     C: Component,
 {
@@ -74,14 +75,14 @@ where
 pub trait System: Debug {
     fn name(&self) -> String;
 
-    fn run(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>>;
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
 }
 
 /// A [`System`] that only has immutable access to the data.
 pub trait ObserverSystem: Debug {
     fn name(&self) -> String;
 
-    fn run(&mut self, data: &Universe) -> Result<(), Box<dyn Error>>;
+    fn run(&mut self, data: &Universe) -> eyre::Result<()>;
 }
 
 impl<S: ObserverSystem> System for S {
@@ -89,7 +90,7 @@ impl<S: ObserverSystem> System for S {
         <S as ObserverSystem>::name(self)
     }
 
-    fn run(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>> {
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         <S as ObserverSystem>::run(self, data)
     }
 }
@@ -104,7 +105,7 @@ impl Systems {
         self.systems.push(system);
     }
 
-    pub fn run_all(&mut self, data: &mut Universe) -> Result<(), Box<dyn Error>> {
+    pub fn run_all(&mut self, data: &mut Universe) -> eyre::Result<()> {
         for system in &mut self.systems {
             system.run(data)?;
         }
