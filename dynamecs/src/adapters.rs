@@ -6,11 +6,17 @@ use std::fmt::{Debug, Display};
 use crate::{System, Universe};
 
 /// A system that runs only once and executes its contained closure
-pub struct RunOnceSystem<F>
+pub struct RunOnceClosureSystem<F>
 where
-    F: FnOnce(&Universe) -> eyre::Result<()>,
+    F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
-    pub closure: Option<F>,
+    closure: Option<F>,
+    has_run: bool,
+}
+
+/// A system that runs only once
+pub struct RunOnceSystem<S: System> {
+    system: Option<S>,
     has_run: bool,
 }
 
@@ -20,46 +26,46 @@ where
     P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
-    pub predicate: P,
-    pub system: S,
+    system: S,
+    predicate: P,
 }
 
 /// Wrapper to store a vector of systems that are run in sequence
 pub struct SystemCollection(pub Vec<Box<dyn System>>);
 
-impl<F> Debug for RunOnceSystem<F>
+impl<F> RunOnceClosureSystem<F>
 where
-    F: FnOnce(&Universe) -> eyre::Result<()>,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
-    }
-}
-
-impl<F> RunOnceSystem<F>
-where
-    F: FnOnce(&Universe) -> eyre::Result<()>,
+    F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     pub fn new(closure: F) -> Self {
-        RunOnceSystem {
+        RunOnceClosureSystem {
             closure: Some(closure),
             has_run: false,
         }
     }
 }
 
-impl<F> Display for RunOnceSystem<F>
+impl<F> Debug for RunOnceClosureSystem<F>
 where
-    F: FnOnce(&Universe) -> eyre::Result<()>,
+    F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
+        write!(f, "RunOnceClosureSystem(has_run: {})", self.has_run)
     }
 }
 
-impl<F> System for RunOnceSystem<F>
+impl<F> Display for RunOnceClosureSystem<F>
 where
-    F: FnOnce(&Universe) -> eyre::Result<()>,
+    F: FnOnce(&mut Universe) -> eyre::Result<()>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RunOnceClosureSystem(has_run: {})", self.has_run)
+    }
+}
+
+impl<F> System for RunOnceClosureSystem<F>
+where
+    F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     fn name(&self) -> String {
         todo!("Should probably take name as an (optional) constructor input")
@@ -67,12 +73,63 @@ where
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if !self.has_run {
-            let ret = (self.closure.take().ok_or_else(|| eyre!("Closure gone"))?)(data)?;
+            let ret = (self.closure.take().ok_or_else(|| eyre!("closure gone"))?)(data)?;
             self.has_run = true;
             Ok(ret)
         } else {
             Ok(())
         }
+    }
+}
+
+impl<S: System> RunOnceSystem<S> {
+    pub fn new(system: S) -> Self {
+        RunOnceSystem {
+            system: Some(system),
+            has_run: false,
+        }
+    }
+}
+
+impl<S: System> Debug for RunOnceSystem<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
+    }
+}
+
+impl<S: System> Display for RunOnceSystem<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
+    }
+}
+
+impl<S: System> System for RunOnceSystem<S> {
+    fn name(&self) -> String {
+        todo!("Should probably take name as an (optional) constructor input")
+    }
+
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
+        if !self.has_run {
+            let ret = self
+                .system
+                .take()
+                .ok_or_else(|| eyre!("system gone"))?
+                .run(data)?;
+            self.has_run = true;
+            Ok(ret)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl<P, S> FilterSystem<P, S>
+where
+    P: FnMut(&Universe) -> eyre::Result<bool>,
+    S: System,
+{
+    pub fn new(system: S, predicate: P) -> Self {
+        Self { system, predicate }
     }
 }
 

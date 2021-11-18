@@ -1,6 +1,7 @@
 use std::any::{Any, TypeId};
 use std::fmt::Debug;
 
+use adapters::{FilterSystem, RunOnceSystem};
 pub use entity::*;
 pub use universe::*;
 
@@ -9,11 +10,10 @@ use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericSto
 pub mod adapters;
 mod entity;
 pub mod fetch;
+pub mod join;
 pub mod serialization;
 pub mod storages;
 mod universe;
-
-pub mod join;
 
 pub trait StorageSerializer: Send + Sync {
     fn storage_tag(&self) -> String;
@@ -79,6 +79,22 @@ pub trait System: Debug {
     }
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
+
+    /// Wraps the system such that it is only run once.
+    fn with_run_once(self) -> RunOnceSystem<Self>
+    where
+        Self: Sized,
+    {
+        RunOnceSystem::new(self)
+    }
+
+    /// Wraps the system with a filter such that it only runs if the given predicate returns `true`.
+    fn with_filter<P: FnMut(&Universe) -> eyre::Result<bool>>(self, predicate: P) -> FilterSystem<P, Self>
+    where
+        Self: Sized,
+    {
+        FilterSystem::new(self, predicate)
+    }
 }
 
 /// A [`System`] that only has immutable access to the data.
