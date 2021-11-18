@@ -74,14 +74,18 @@ where
 }
 
 pub trait System: Debug {
-    fn name(&self) -> String;
+    fn name(&self) -> String {
+        std::any::type_name::<Self>().to_string()
+    }
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
 }
 
 /// A [`System`] that only has immutable access to the data.
 pub trait ObserverSystem: Debug {
-    fn name(&self) -> String;
+    fn name(&self) -> String {
+        std::any::type_name::<Self>().to_string()
+    }
 
     fn run(&mut self, data: &Universe) -> eyre::Result<()>;
 }
