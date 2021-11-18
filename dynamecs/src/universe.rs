@@ -92,7 +92,7 @@ impl Universe {
             storage_ref as *const _
         } else {
             // TODO: Obtain tag directly through storage?
-            let tag = S::new_factory().storage_tag();
+            let tag = S::tag();
             let storage_ref = storages
                 .entry(TypeId::of::<S>())
                 .or_insert(TaggedTypeErasedStorage {
@@ -118,7 +118,7 @@ impl Universe {
     ///
     /// If a storage of the same type was already present, it is returned. Otherwise `None` is returned.
     pub fn insert_storage<S: Storage>(&mut self, storage: S) -> Option<S> {
-        let tag = S::new_factory().storage_tag();
+        let tag = S::tag();
         self.storages
             .get_mut()
             .insert(
@@ -149,10 +149,8 @@ impl Universe {
         let ref_mut = storages
             .entry(TypeId::of::<S>())
             .or_insert_with(|| {
-                let factory = S::new_factory();
-                let tag = factory.storage_tag();
                 TaggedTypeErasedStorage {
-                    tag,
+                    tag: S::tag(),
                     storage: Box::new(S::default()),
                 }
             })

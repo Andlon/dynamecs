@@ -4,7 +4,7 @@ use std::fmt::Debug;
 pub use entity::*;
 pub use universe::*;
 
-use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericFactory};
+use crate::serialization::{EntitySerializationMap, GenericStorageSerializer, EntityDeserialize};
 
 pub mod adapters;
 mod entity;
@@ -15,7 +15,7 @@ mod universe;
 
 pub mod join;
 
-pub trait StorageFactory: Send + Sync {
+pub trait StorageSerializer: Send + Sync {
     fn storage_tag(&self) -> String;
 
     fn serializable_storage<'a>(
@@ -32,14 +32,29 @@ pub trait StorageFactory: Send + Sync {
     fn storage_type_id(&self) -> TypeId;
 }
 
-pub trait Storage: 'static + serde::Serialize + for<'de> EntityDeserialize<'de> {
-    fn new_factory() -> Box<dyn StorageFactory> {
-        let factory = GenericFactory::<Self>::new();
+pub trait Storage: 'static {
+    fn tag() -> String {
+        // TODO: Ideally type_name should not be used for this purpose, so perhaps we should
+        // force components to provide a tag?
+        std::any::type_name::<Self>().to_string()
+    }
+}
+
+impl<S: 'static> Storage for S {}
+
+pub trait SerializableStorage: Storage + serde::Serialize + for<'de> EntityDeserialize<'de> {
+    fn create_serializer() -> Box<dyn StorageSerializer> {
+        let factory = GenericStorageSerializer::<Self>::new();
         Box::new(factory)
     }
 }
 
-impl<S> Storage for S where S: 'static + serde::Serialize + for<'de> EntityDeserialize<'de> {}
+impl<S> SerializableStorage for S
+where
+    S: Storage + serde::Serialize + for<'de> EntityDeserialize<'de>
+{
+
+}
 
 pub trait InsertComponentForEntity<C> {
     fn insert_component_for_entity(&mut self, entity: Entity, component: C);
@@ -68,6 +83,7 @@ pub trait Component: 'static {
 pub fn register_component<C>() -> eyre::Result<RegistrationStatus>
 where
     C: Component,
+    C::Storage: SerializableStorage
 {
     register_storage::<C::Storage>()
 }

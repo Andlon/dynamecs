@@ -11,10 +11,9 @@ use serde::de::DeserializeSeed;
 
 use crate::serialization::EntitySerializationMap;
 use crate::universe::TaggedTypeErasedStorage;
-use crate::{Storage, StorageFactory, Universe};
+use crate::{StorageSerializer, Universe, SerializableStorage};
 
-static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageFactory>>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageSerializer>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RegistrationStatus {
@@ -25,7 +24,7 @@ pub enum RegistrationStatus {
     Replaced,
 }
 
-pub fn register_factory(factory: Box<dyn StorageFactory>) -> eyre::Result<RegistrationStatus> {
+pub fn register_factory(factory: Box<dyn StorageSerializer>) -> eyre::Result<RegistrationStatus> {
     let mut hash_map = REGISTRY
         .lock()
         .map_err(|_| eyre!("failed to obtain registry lock"))?;
@@ -39,13 +38,13 @@ pub fn register_factory(factory: Box<dyn StorageFactory>) -> eyre::Result<Regist
 
 pub fn register_storage<S>() -> eyre::Result<RegistrationStatus>
 where
-    S: Storage,
+    S: SerializableStorage,
 {
-    let factory = S::new_factory();
+    let factory = S::create_serializer();
     register_factory(factory)
 }
 
-fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageFactory) -> R) -> eyre::Result<R> {
+fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageSerializer) -> R) -> eyre::Result<R> {
     let hash_map = REGISTRY
         .lock()
         .map_err(|_| eyre!("failed to obtain registry lock"))?;
@@ -57,7 +56,7 @@ fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageFactory) -> R) -> ey
 
 // TODO: Naming
 struct FactoryWrapper<'a> {
-    factory: &'a dyn StorageFactory,
+    factory: &'a dyn StorageSerializer,
     id_map: &'a mut EntitySerializationMap,
 }
 
