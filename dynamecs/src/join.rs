@@ -1,7 +1,5 @@
 //! Functionality that enables the Join API.
-use crate::storages::{
-    VecStorage, VecStorageEntityComponentIter, VecStorageEntityComponentIterMut,
-};
+use crate::storages::{VecStorage, VecStorageEntityComponentIter, VecStorageEntityComponentIterMut};
 use crate::Entity;
 
 pub trait IntoJoinable<'a> {

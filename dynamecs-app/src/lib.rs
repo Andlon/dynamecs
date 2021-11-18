@@ -124,9 +124,7 @@ impl<Config> DynamecsApp<Config> {
                 scenario.post_systems.run_all(state)?;
             }
         } else {
-            Err(eyre!(
-                "cannot run scenario: no scenario initializer provided",
-            ))
+            Err(eyre!("cannot run scenario: no scenario initializer provided",))
         }
     }
 }
@@ -144,10 +142,7 @@ fn get_time_step_or_set_default(state: &mut Universe) -> TimeStep {
         storage.get_component().clone()
     } else {
         let default_dt = state.get_component_storage::<TimeStep>().get_component();
-        info!(
-            "No time step configured. Using default dt = {}",
-            default_dt.0
-        );
+        info!("No time step configured. Using default dt = {}", default_dt.0);
         default_dt.clone()
     }
 }

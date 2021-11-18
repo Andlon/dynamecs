@@ -11,7 +11,7 @@ use serde::de::DeserializeSeed;
 
 use crate::serialization::EntitySerializationMap;
 use crate::universe::TaggedTypeErasedStorage;
-use crate::{StorageSerializer, Universe, SerializableStorage};
+use crate::{SerializableStorage, StorageSerializer, Universe};
 
 static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageSerializer>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -139,18 +139,15 @@ impl<'de> serde::de::Visitor<'de> for StorageContainerVisitor {
         A: serde::de::SeqAccess<'de>,
     {
         let mut storages = HashMap::new();
-        let mut tagged = TaggedStorage {
-            id_map: &mut self.0,
-        };
+        let mut tagged = TaggedStorage { id_map: &mut self.0 };
 
         while let Some((tag, storage)) = seq.next_element_seed(&mut tagged)? {
-            let type_id =
-                look_up_factory(&tag, |factory| factory.storage_type_id()).map_err(|err| {
-                    serde::de::Error::custom(format!(
-                        "No factory registered for tag. Cannot deserialize. Internal error: {}",
-                        err
-                    ))
-                })?;
+            let type_id = look_up_factory(&tag, |factory| factory.storage_type_id()).map_err(|err| {
+                serde::de::Error::custom(format!(
+                    "No factory registered for tag. Cannot deserialize. Internal error: {}",
+                    err
+                ))
+            })?;
             storages.insert(type_id, TaggedTypeErasedStorage { tag, storage });
         }
 

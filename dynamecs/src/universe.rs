@@ -6,7 +6,7 @@ pub use universe_serialize::{register_factory, register_storage, RegistrationSta
 
 use crate::fetch::{FetchComponentStorages, FetchComponentStoragesMut};
 use crate::join::Join;
-use crate::{Component, Entity, InsertComponentForEntity, Storage, GetComponentForEntity, GetComponentForEntityMut};
+use crate::{Component, Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity, Storage};
 use std::fmt::{Debug, Formatter};
 
 // Make universe_serialize a submodule of this module, so that it can still
@@ -148,11 +148,9 @@ impl Universe {
         let mut storages = self.storages.borrow_mut();
         let ref_mut = storages
             .entry(TypeId::of::<S>())
-            .or_insert_with(|| {
-                TaggedTypeErasedStorage {
-                    tag: S::tag(),
-                    storage: Box::new(S::default()),
-                }
+            .or_insert_with(|| TaggedTypeErasedStorage {
+                tag: S::tag(),
+                storage: Box::new(S::default()),
             })
             .storage
             .downcast_mut()
@@ -332,8 +330,8 @@ impl Universe {
     }
 
     pub fn get_component_for_entity_mut<C: Component>(&mut self, entity: Entity) -> Option<&mut C>
-        where
-            C::Storage: Default + GetComponentForEntityMut<C>,
+    where
+        C::Storage: Default + GetComponentForEntityMut<C>,
     {
         self.get_component_storage_mut::<C>()
             .get_component_for_entity_mut(entity)

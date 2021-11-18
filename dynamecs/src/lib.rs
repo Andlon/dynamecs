@@ -4,7 +4,7 @@ use std::fmt::Debug;
 pub use entity::*;
 pub use universe::*;
 
-use crate::serialization::{EntitySerializationMap, GenericStorageSerializer, EntityDeserialize};
+use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericStorageSerializer};
 
 pub mod adapters;
 mod entity;
@@ -18,10 +18,7 @@ pub mod join;
 pub trait StorageSerializer: Send + Sync {
     fn storage_tag(&self) -> String;
 
-    fn serializable_storage<'a>(
-        &self,
-        storage: &'a dyn Any,
-    ) -> eyre::Result<&'a dyn erased_serde::Serialize>;
+    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> eyre::Result<&'a dyn erased_serde::Serialize>;
 
     fn deserialize_storage(
         &self,
@@ -49,12 +46,7 @@ pub trait SerializableStorage: Storage + serde::Serialize + for<'de> EntityDeser
     }
 }
 
-impl<S> SerializableStorage for S
-where
-    S: Storage + serde::Serialize + for<'de> EntityDeserialize<'de>
-{
-
-}
+impl<S> SerializableStorage for S where S: Storage + serde::Serialize + for<'de> EntityDeserialize<'de> {}
 
 pub trait InsertComponentForEntity<C> {
     fn insert_component_for_entity(&mut self, entity: Entity, component: C);
@@ -76,7 +68,7 @@ pub trait Component: 'static {
 pub fn register_component<C>() -> eyre::Result<RegistrationStatus>
 where
     C: Component,
-    C::Storage: SerializableStorage
+    C::Storage: SerializableStorage,
 {
     register_storage::<C::Storage>()
 }

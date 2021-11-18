@@ -5,7 +5,7 @@ use erased_serde::Serialize;
 use eyre::eyre;
 
 use crate::serialization::{EntityDeserialize, EntitySerializationMap};
-use crate::{StorageSerializer, Storage};
+use crate::{Storage, StorageSerializer};
 
 /// Generic storage serializer.
 ///
@@ -19,9 +19,7 @@ pub struct GenericStorageSerializer<Storage> {
 
 impl<Storage> GenericStorageSerializer<Storage> {
     pub fn new() -> Self {
-        Self {
-            marker: PhantomData,
-        }
+        Self { marker: PhantomData }
     }
 }
 
