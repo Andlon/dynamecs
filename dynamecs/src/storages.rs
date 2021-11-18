@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::join::{IntoJoinable, Joinable};
 use crate::serialization::{EntityDeserialize, EntitySerializationMap, SerializableEntity};
-use crate::{BijectiveStorage, BijectiveStorageMut, Entity, InsertComponentForEntity};
+use crate::{GetComponentForEntity, GetComponentForEntityMut, Entity, InsertComponentForEntity};
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct VecStorage<Component> {
@@ -181,20 +181,14 @@ impl<C> InsertComponentForEntity<C> for VecStorage<C> {
     }
 }
 
-impl<C> BijectiveStorage for VecStorage<C> {
-    type Component = C;
-
-    fn get_component_for_entity(&self, id: Entity) -> Option<&Self::Component> {
+impl<C> GetComponentForEntity<C> for VecStorage<C> {
+    fn get_component_for_entity(&self, id: Entity) -> Option<&C> {
         self.components.get(self.get_index(id)?)
     }
 }
 
-impl<C> BijectiveStorageMut for VecStorage<C> {
-    fn insert_component(&mut self, id: Entity, component: Self::Component) {
-        self.insert(id, component);
-    }
-
-    fn get_component_for_entity_mut(&mut self, id: Entity) -> Option<&mut Self::Component> {
+impl<C> GetComponentForEntityMut<C> for VecStorage<C> {
+    fn get_component_for_entity_mut(&mut self, id: Entity) -> Option<&mut C> {
         let index = self.get_index(id)?;
         self.components.get_mut(index)
     }

@@ -60,20 +60,13 @@ pub trait InsertComponentForEntity<C> {
     fn insert_component_for_entity(&mut self, entity: Entity, component: C);
 }
 
-/// Storage that represents a one-to-one (bijective) correspondence between entities and components.
-pub trait BijectiveStorage {
-    // TODO: Move associated type to `Storage`?
-    type Component;
-
-    fn get_component_for_entity(&self, id: Entity) -> Option<&Self::Component>;
+/// Get a single component associated with the given entity, if it exists.
+pub trait GetComponentForEntity<C> {
+    fn get_component_for_entity(&self, id: Entity) -> Option<&C>;
 }
 
-pub trait BijectiveStorageMut: BijectiveStorage {
-    /// Inserts a component associated with the entity, overwriting any existing component
-    /// that may already be associated with the given entity.
-    fn insert_component(&mut self, id: Entity, component: Self::Component);
-
-    fn get_component_for_entity_mut(&mut self, id: Entity) -> Option<&mut Self::Component>;
+pub trait GetComponentForEntityMut<C> {
+    fn get_component_for_entity_mut(&mut self, id: Entity) -> Option<&mut C>;
 }
 
 pub trait Component: 'static {

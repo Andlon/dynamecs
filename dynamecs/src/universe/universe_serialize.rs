@@ -125,9 +125,9 @@ impl<'a, 'b, 'de> serde::de::Visitor<'de> for &'b mut TaggedStorage<'a> {
     }
 }
 
-struct StorageContainerVisitor2(EntitySerializationMap);
+struct StorageContainerVisitor(EntitySerializationMap);
 
-impl<'de> serde::de::Visitor<'de> for StorageContainerVisitor2 {
+impl<'de> serde::de::Visitor<'de> for StorageContainerVisitor {
     type Value = Universe;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -168,7 +168,7 @@ impl<'de> serde::Deserialize<'de> for Universe {
         D: serde::Deserializer<'de>,
     {
         let id_map = EntitySerializationMap::new();
-        deserializer.deserialize_seq(StorageContainerVisitor2(id_map))
+        deserializer.deserialize_seq(StorageContainerVisitor(id_map))
     }
 }
 
