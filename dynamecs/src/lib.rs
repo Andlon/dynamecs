@@ -96,14 +96,20 @@ impl<S: ObserverSystem> System for S {
     }
 }
 
+impl<S: System + 'static> From<S> for Box<dyn System> {
+    fn from(system: S) -> Box<dyn System> {
+        Box::new(system)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Systems {
     systems: Vec<Box<dyn System>>,
 }
 
 impl Systems {
-    pub fn add_system(&mut self, system: Box<dyn System>) {
-        self.systems.push(system);
+    pub fn add_system<S: Into<Box<dyn System>>>(&mut self, system: S) {
+        self.systems.push(system.into());
     }
 
     pub fn run_all(&mut self, data: &mut Universe) -> eyre::Result<()> {
