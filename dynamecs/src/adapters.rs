@@ -206,3 +206,18 @@ impl System for SystemCollection {
         Ok(())
     }
 }
+
+impl From<Vec<Box<dyn System>>> for SystemCollection {
+    fn from(vec: Vec<Box<dyn System>>) -> Self {
+        Self(vec)
+    }
+}
+
+impl<S> FromIterator<S> for SystemCollection
+where
+    S: Into<Box<dyn System>>,
+{
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        SystemCollection(iter.into_iter().map(|s| s.into()).collect())
+    }
+}
