@@ -28,9 +28,11 @@ where
 
 /// Wraps a [`System`] such that it can run only once.
 ///
-/// The wrapped system is guaranteed to be run only once and is dropped afterwards.
+/// The wrapped system is guaranteed to be run only once. Subsequent calls to the `run` function will just return `Ok`
+/// without running the wrapped system.
 pub struct SingleShotSystem<S: System> {
-    system: Option<S>,
+    /// Wrapped system.
+    pub system: S,
     has_run: bool,
 }
 
@@ -40,8 +42,10 @@ where
     P: FnMut(&Universe) -> eyre::Result<bool>,
     S: System,
 {
-    system: S,
-    predicate: P,
+    /// Wrapped system.
+    pub system: S,
+    /// Predicate closure used for the filtering.
+    pub predicate: P,
 }
 
 /// Wrapper to store a vector of systems that are run in sequence.
@@ -149,7 +153,7 @@ where
 impl<S: System> SingleShotSystem<S> {
     pub fn new(system: S) -> Self {
         SingleShotSystem {
-            system: Some(system),
+            system: system,
             has_run: false,
         }
     }
@@ -179,11 +183,7 @@ impl<S: System> System for SingleShotSystem<S> {
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if !self.has_run {
-            let ret = self
-                .system
-                .take()
-                .ok_or_else(|| eyre!("system gone"))?
-                .run(data)?;
+            let ret = self.system.run(data)?;
             self.has_run = true;
             Ok(ret)
         } else {
