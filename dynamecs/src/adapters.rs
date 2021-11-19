@@ -5,7 +5,9 @@ use std::fmt::{Debug, Display};
 
 use crate::{System, Universe};
 
-/// A system that runs only once and executes its contained closure
+/// Adapts a `FnOnce` closure as a [`System`].
+///
+/// The closure is only run once and dropped afterwards.
 pub struct RunOnceClosureSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
@@ -14,13 +16,15 @@ where
     has_run: bool,
 }
 
-/// A system that runs only once
+/// Wraps a [`System`] and runs it only once.
+///
+/// The system is guaranteed to be run only once and is dropped afterwards.
 pub struct RunOnceSystem<S: System> {
     system: Option<S>,
     has_run: bool,
 }
 
-/// System that uses a closure to determine if a system should be run
+/// Filter system that uses a closure to determine if the wrapped system should be run.
 pub struct FilterSystem<P, S>
 where
     P: FnMut(&Universe) -> eyre::Result<bool>,
@@ -30,7 +34,7 @@ where
     predicate: P,
 }
 
-/// Wrapper to store a vector of systems that are run in sequence
+/// Wrapper to store a vector of systems that are run in sequence.
 pub struct SystemCollection(pub Vec<Box<dyn System>>);
 
 impl<F> RunOnceClosureSystem<F>
