@@ -26,7 +26,7 @@ where
     has_run: bool,
 }
 
-/// Wraps a [`System`] and runs it only once.
+/// Wraps a [`System`] such that it can run only once.
 ///
 /// The wrapped system is guaranteed to be run only once and is dropped afterwards.
 pub struct SingleShotSystem<S: System> {

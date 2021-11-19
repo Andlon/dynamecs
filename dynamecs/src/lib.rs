@@ -80,7 +80,7 @@ pub trait System: Debug {
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
 
-    /// Wraps the system such that it is only run once.
+    /// Wraps the system such that can only run once.
     fn single_shot(self) -> SingleShotSystem<Self>
     where
         Self: Sized,
@@ -89,9 +89,10 @@ pub trait System: Debug {
     }
 
     /// Wraps the system with a filter such that it only runs if the given predicate returns `true`.
-    fn filter<P: FnMut(&Universe) -> eyre::Result<bool>>(self, predicate: P) -> FilterSystem<P, Self>
+    fn filter<P>(self, predicate: P) -> FilterSystem<P, Self>
     where
         Self: Sized,
+        P: FnMut(&Universe) -> eyre::Result<bool>,
     {
         FilterSystem::new(self, predicate)
     }
