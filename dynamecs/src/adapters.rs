@@ -5,6 +5,15 @@ use std::fmt::{Debug, Display};
 
 use crate::{System, Universe};
 
+/// Adapts a `Fn` or `FnMut` closure as a [`System`].
+pub struct FnSystem<F>
+where
+    F: FnMut(&mut Universe) -> eyre::Result<()>,
+{
+    name: String,
+    fun: F,
+}
+
 /// Adapts a `FnOnce` closure as a [`System`].
 ///
 /// The closure is only run once and dropped afterwards.
@@ -38,14 +47,57 @@ where
 /// Wrapper to store a vector of systems that are run in sequence.
 pub struct SystemCollection(pub Vec<Box<dyn System>>);
 
+impl<F> FnSystem<F>
+where
+    F: FnMut(&mut Universe) -> eyre::Result<()>,
+{
+    pub fn new<S: Into<String>>(name: S, f: F) -> Self {
+        Self {
+            name: name.into(),
+            fun: f,
+        }
+    }
+}
+
+impl<F> Debug for FnSystem<F>
+where
+    F: FnMut(&mut Universe) -> eyre::Result<()>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FnOnceSystem(name: {})", self.name)
+    }
+}
+
+impl<F> Display for FnSystem<F>
+where
+    F: FnMut(&mut Universe) -> eyre::Result<()>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FnSystem(name: {})", self.name)
+    }
+}
+
+impl<F> System for FnSystem<F>
+where
+    F: FnMut(&mut Universe) -> eyre::Result<()>,
+{
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
+        (self.fun)(data)
+    }
+}
+
 impl<F> FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
-    pub fn new<S: Into<String>>(name: S, closure: F) -> Self {
-        FnOnceSystem {
+    pub fn new<S: Into<String>>(name: S, f: F) -> Self {
+        Self {
             name: name.into(),
-            closure: Some(closure),
+            closure: Some(f),
             has_run: false,
         }
     }
