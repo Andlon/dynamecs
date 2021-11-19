@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId};
 use std::fmt::Debug;
 
-use adapters::{FilterSystem, RunOnceSystem};
+use adapters::{FilterSystem, SingleShotSystem};
 pub use entity::*;
 pub use universe::*;
 
@@ -81,11 +81,11 @@ pub trait System: Debug {
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
 
     /// Wraps the system such that it is only run once.
-    fn single_shot(self) -> RunOnceSystem<Self>
+    fn single_shot(self) -> SingleShotSystem<Self>
     where
         Self: Sized,
     {
-        RunOnceSystem::new(self)
+        SingleShotSystem::new(self)
     }
 
     /// Wraps the system with a filter such that it only runs if the given predicate returns `true`.

@@ -8,18 +8,19 @@ use crate::{System, Universe};
 /// Adapts a `FnOnce` closure as a [`System`].
 ///
 /// The closure is only run once and dropped afterwards.
-pub struct RunOnceClosureSystem<F>
+pub struct FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
+    name: String,
     closure: Option<F>,
     has_run: bool,
 }
 
 /// Wraps a [`System`] and runs it only once.
 ///
-/// The system is guaranteed to be run only once and is dropped afterwards.
-pub struct RunOnceSystem<S: System> {
+/// The wrapped system is guaranteed to be run only once and is dropped afterwards.
+pub struct SingleShotSystem<S: System> {
     system: Option<S>,
     has_run: bool,
 }
@@ -37,42 +38,43 @@ where
 /// Wrapper to store a vector of systems that are run in sequence.
 pub struct SystemCollection(pub Vec<Box<dyn System>>);
 
-impl<F> RunOnceClosureSystem<F>
+impl<F> FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
-    pub fn new(closure: F) -> Self {
-        RunOnceClosureSystem {
+    pub fn new<S: Into<String>>(name: S, closure: F) -> Self {
+        FnOnceSystem {
+            name: name.into(),
             closure: Some(closure),
             has_run: false,
         }
     }
 }
 
-impl<F> Debug for RunOnceClosureSystem<F>
+impl<F> Debug for FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceClosureSystem(has_run: {})", self.has_run)
+        write!(f, "FnOnceSystem(name: {}, has_run: {})", self.name, self.has_run)
     }
 }
 
-impl<F> Display for RunOnceClosureSystem<F>
+impl<F> Display for FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceClosureSystem(has_run: {})", self.has_run)
+        write!(f, "FnOnceSystem(name: {}, has_run: {})", self.name, self.has_run)
     }
 }
 
-impl<F> System for RunOnceClosureSystem<F>
+impl<F> System for FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
     fn name(&self) -> String {
-        todo!("Should probably take name as an (optional) constructor input")
+        self.name.clone()
     }
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
@@ -86,28 +88,28 @@ where
     }
 }
 
-impl<S: System> RunOnceSystem<S> {
+impl<S: System> SingleShotSystem<S> {
     pub fn new(system: S) -> Self {
-        RunOnceSystem {
+        SingleShotSystem {
             system: Some(system),
             has_run: false,
         }
     }
 }
 
-impl<S: System> Debug for RunOnceSystem<S> {
+impl<S: System> Debug for SingleShotSystem<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
+        write!(f, "SingleShotSystem(has_run: {})", self.has_run)
     }
 }
 
-impl<S: System> Display for RunOnceSystem<S> {
+impl<S: System> Display for SingleShotSystem<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RunOnceSystem(has_run: {})", self.has_run)
+        write!(f, "SingleShotSystem(has_run: {})", self.has_run)
     }
 }
 
-impl<S: System> System for RunOnceSystem<S> {
+impl<S: System> System for SingleShotSystem<S> {
     fn name(&self) -> String {
         todo!("Should probably take name as an (optional) constructor input")
     }
