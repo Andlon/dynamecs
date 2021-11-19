@@ -94,12 +94,18 @@ impl<F> FnOnceSystem<F>
 where
     F: FnOnce(&mut Universe) -> eyre::Result<()>,
 {
+    /// Constructs a new system with the given name from the given `FnOnce` closure.
     pub fn new<S: Into<String>>(name: S, f: F) -> Self {
         Self {
             name: name.into(),
             closure: Some(f),
             has_run: false,
         }
+    }
+
+    /// Returns whether the system already has run.
+    pub fn has_run(&self) -> bool {
+        self.has_run
     }
 }
 
@@ -146,6 +152,11 @@ impl<S: System> SingleShotSystem<S> {
             system: Some(system),
             has_run: false,
         }
+    }
+
+    /// Returns whether the system already has run.
+    pub fn has_run(&self) -> bool {
+        self.has_run
     }
 }
 
