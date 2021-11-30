@@ -12,6 +12,8 @@ use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+mod checkpointing;
+
 #[derive(Debug)]
 pub struct Scenario {
     name: String,
