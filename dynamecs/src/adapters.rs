@@ -3,6 +3,7 @@ use eyre::eyre;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
+use crate::components::get_simulation_time;
 use crate::{System, Universe};
 
 /// Adapts a `Fn` or `FnMut` closure as a [`System`].
@@ -26,7 +27,7 @@ where
     has_run: bool,
 }
 
-/// Wraps a [`System`] such that it can run only once.
+/// Wrapper system that ensures the wrapped [`System`] can run only once.
 ///
 /// The wrapped system is guaranteed to be run only once. Subsequent calls to the `run` function will just return `Ok`
 /// without running the wrapped system.
@@ -46,6 +47,21 @@ where
     pub system: S,
     /// Predicate closure used for the filtering.
     pub predicate: P,
+}
+
+/// Wrapper system that only runs if the [`SimulationTime`](`crate::components::SimulationTime`) reaches the specified time.
+pub struct DelayedSystem<S: System> {
+    system: S,
+    activation_time: f64,
+}
+
+impl<S: System> DelayedSystem<S> {
+    pub fn new(system: S, activation_time: f64) -> Self {
+        DelayedSystem {
+            system,
+            activation_time,
+        }
+    }
 }
 
 /// Wrapper to store a vector of systems that are run in sequence.
@@ -233,6 +249,32 @@ where
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if (self.predicate)(data)? {
+            self.system.run(data)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl<S: System> Debug for DelayedSystem<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "DelayedSystem(activation_time: {})", self.activation_time)
+    }
+}
+
+impl<S: System> Display for DelayedSystem<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "DelayedSystem(activation_time: {})", self.activation_time)
+    }
+}
+
+impl<S: System> System for DelayedSystem<S> {
+    fn name(&self) -> String {
+        todo!("Should probably take name as an (optional) constructor input")
+    }
+
+    fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
+        if get_simulation_time(data).0 >= self.activation_time {
             self.system.run(data)
         } else {
             Ok(())

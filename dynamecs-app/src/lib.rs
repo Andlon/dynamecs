@@ -1,5 +1,5 @@
 //! Staging area for developing things that later will be moved to dynamecs
-use crate::components::{
+use dynamecs::components::{
     get_simulation_time, get_step_index, DynamecsAppSettings, SimulationTime, StepIndex, TimeStep,
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
@@ -10,11 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-pub mod adapters;
-pub mod components;
-
-pub use adapters::SystemExt;
 
 #[derive(Debug)]
 pub struct Scenario {

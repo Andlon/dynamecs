@@ -1,13 +1,13 @@
+use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericStorageSerializer};
+use adapters::{DelayedSystem, FilterSystem, SingleShotSystem};
 use std::any::{Any, TypeId};
 use std::fmt::Debug;
 
-use adapters::{FilterSystem, SingleShotSystem};
 pub use entity::*;
 pub use universe::*;
 
-use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericStorageSerializer};
-
 pub mod adapters;
+pub mod components;
 mod entity;
 pub mod fetch;
 pub mod join;
@@ -95,6 +95,16 @@ pub trait System: Debug {
         P: FnMut(&Universe) -> eyre::Result<bool>,
     {
         FilterSystem::new(self, predicate)
+    }
+
+    /// Wraps the system such that it only runs if the [`SimulationTime`](`crate::components::SimulationTime`) reaches the specified time.
+    ///
+    /// The system runs only if `simulation_time >= activation_time`
+    fn delay_until(self, activation_time: f64) -> DelayedSystem<Self>
+    where
+        Self: Sized,
+    {
+        DelayedSystem::new(self, activation_time)
     }
 }
 

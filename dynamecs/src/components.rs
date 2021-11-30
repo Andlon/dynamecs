@@ -1,5 +1,7 @@
-use dynamecs::storages::{ImmutableSingularStorage, SingularStorage, VecStorage};
-use dynamecs::{Component, Universe};
+//! Predefined components commonly used by simulators.
+
+use crate::storages::{ImmutableSingularStorage, SingularStorage, VecStorage};
+use crate::{Component, Universe};
 use eyre::eyre;
 use serde::{Deserialize, Serialize};
 use std::fmt;
