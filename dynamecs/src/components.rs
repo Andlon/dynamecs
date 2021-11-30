@@ -1,7 +1,7 @@
 //! Predefined components commonly used by simulators.
 
 use crate::storages::{ImmutableSingularStorage, SingularStorage, VecStorage};
-use crate::{Component, Universe};
+use crate::{register_component, Component, Universe};
 use eyre::eyre;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -9,9 +9,28 @@ use std::fmt::Formatter;
 use std::ops::Deref;
 use std::path::PathBuf;
 
+/// Registers the "default" components [`Name`], [`TimeStep`], [`SimulationTime`] and [`StepIndex`].
+pub fn register_default_components() -> eyre::Result<()> {
+    register_component::<Name>()?;
+    register_component::<TimeStep>()?;
+    register_component::<SimulationTime>()?;
+    register_component::<StepIndex>()?;
+
+    Ok(())
+}
+
 /// Associates an entity with a name.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Name(pub String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimeStep(pub f64);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulationTime(pub f64);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepIndex(pub usize);
 
 impl Component for Name {
     type Storage = VecStorage<Self>;
@@ -42,15 +61,6 @@ impl From<String> for Name {
         Name(s)
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimeStep(pub f64);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SimulationTime(pub f64);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StepIndex(pub usize);
 
 impl Default for TimeStep {
     fn default() -> Self {

@@ -1,9 +1,10 @@
 //! Staging area for developing things that later will be moved to dynamecs
 use dynamecs::components::{
-    get_simulation_time, get_step_index, DynamecsAppSettings, SimulationTime, StepIndex, TimeStep,
+    get_simulation_time, get_step_index, register_default_components, DynamecsAppSettings, SimulationTime, StepIndex,
+    TimeStep,
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
-use dynamecs::{Component, Systems, Universe};
+use dynamecs::{register_component, Component, Systems, Universe};
 use eyre::eyre;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,9 @@ impl<Config> DynamecsApp<Config> {
     where
         I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
+        register_default_components()?;
+        register_component::<DynamecsAppSettings>()?;
+
         let mut scenario = initializer(&self.config)?;
         let app_settings = DynamecsAppSettings {
             scenario_name: scenario.name().to_string(),
