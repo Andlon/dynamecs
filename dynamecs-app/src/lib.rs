@@ -69,19 +69,24 @@ impl<Config> DynamecsApp<Config> {
         register_component::<DynamecsAppSettings>()?;
 
         let mut scenario = initializer(&self.config)?;
+
+        let scenario_name = scenario.name().to_string();
         let app_settings = DynamecsAppSettings {
+            output_folder: self.app_settings.output_folder.join(scenario_name),
             scenario_name: scenario.name().to_string(),
-            ..self.app_settings.clone()
         };
+
         scenario
             .state
             .insert_storage(ImmutableSingularStorage::new(app_settings));
+
         if let Some(dt) = self.dt_override {
             info!("Overriding time step dt = {}", dt);
             scenario
                 .state
                 .insert_storage(SingularStorage::new(TimeStep(dt)));
         }
+
         self.scenario = Some(scenario);
         Ok(self)
     }
