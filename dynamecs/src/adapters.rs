@@ -197,6 +197,10 @@ impl<S: System> System for SingleShotSystem<S> {
         todo!("Should probably take name as an (optional) constructor input")
     }
 
+    fn register_components(&self) {
+        self.system.register_components();
+    }
+
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if !self.has_run {
             let ret = self.system.run(data)?;
@@ -247,6 +251,10 @@ where
         todo!("Should probably take name as optional parameter to constructor")
     }
 
+    fn register_components(&self) {
+        self.system.register_components();
+    }
+
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
         if (self.predicate)(data)? {
             self.system.run(data)
@@ -271,6 +279,10 @@ impl<S: System> Display for DelayedSystem<S> {
 impl<S: System> System for DelayedSystem<S> {
     fn name(&self) -> String {
         todo!("Should probably take name as an (optional) constructor input")
+    }
+
+    fn register_components(&self) {
+        self.system.register_components();
     }
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
