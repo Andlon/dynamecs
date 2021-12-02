@@ -78,6 +78,9 @@ pub trait System: Debug {
         std::any::type_name::<Self>().to_string()
     }
 
+    /// Registers components used by this system for serialization and deserialization
+    fn register_components(&self) {}
+
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()>;
 
     /// Wraps the system such that can only run once.
@@ -114,12 +117,19 @@ pub trait ObserverSystem: Debug {
         std::any::type_name::<Self>().to_string()
     }
 
+    /// Registers components used by this system for serialization and deserialization
+    fn register_components(&self) {}
+
     fn run(&mut self, data: &Universe) -> eyre::Result<()>;
 }
 
 impl<S: ObserverSystem> System for S {
     fn name(&self) -> String {
         <S as ObserverSystem>::name(self)
+    }
+
+    fn register_components(&self) {
+        <S as ObserverSystem>::register_components(self)
     }
 
     fn run(&mut self, data: &mut Universe) -> eyre::Result<()> {
@@ -141,6 +151,12 @@ pub struct Systems {
 impl Systems {
     pub fn add_system<S: Into<Box<dyn System>>>(&mut self, system: S) {
         self.systems.push(system.into());
+    }
+
+    pub fn register_components(&self) {
+        for system in &self.systems {
+            system.register_components();
+        }
     }
 
     pub fn run_all(&mut self, data: &mut Universe) -> eyre::Result<()> {

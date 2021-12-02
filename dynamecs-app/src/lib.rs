@@ -72,9 +72,6 @@ impl<Config> DynamecsApp<Config> {
     where
         I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
-        register_default_components();
-        register_component::<DynamecsAppSettings>();
-
         let mut scenario = initializer(&self.config)?;
 
         let scenario_name = scenario.name().to_string();
@@ -113,6 +110,13 @@ impl<Config> DynamecsApp<Config> {
 
     pub fn run(&mut self) -> eyre::Result<()> {
         if let Some(scenario) = &mut self.scenario {
+            // Register components of all systems
+            register_default_components();
+            register_component::<DynamecsAppSettings>();
+            scenario.pre_systems.register_components();
+            scenario.simulation_systems.register_components();
+            scenario.post_systems.register_components();
+
             if let Some(checkpoint_path) = &self.restore_from_checkpoint {
                 let universe = restore_checkpoint_file(checkpoint_path)?;
                 scenario.state = universe;
