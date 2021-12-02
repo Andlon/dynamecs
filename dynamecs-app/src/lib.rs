@@ -72,8 +72,8 @@ impl<Config> DynamecsApp<Config> {
     where
         I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
-        register_default_components()?;
-        register_component::<DynamecsAppSettings>()?;
+        register_default_components();
+        register_component::<DynamecsAppSettings>();
 
         let mut scenario = initializer(&self.config)?;
 

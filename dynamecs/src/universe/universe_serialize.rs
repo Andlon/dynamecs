@@ -36,12 +36,12 @@ pub fn register_factory(factory: Box<dyn StorageSerializer>) -> eyre::Result<Reg
     }
 }
 
-pub fn register_storage<S>() -> eyre::Result<RegistrationStatus>
+pub fn register_storage<S>() -> RegistrationStatus
 where
     S: SerializableStorage,
 {
     let factory = S::create_serializer();
-    register_factory(factory)
+    register_factory(factory).expect("internal error")
 }
 
 fn look_up_serializer<R>(tag: &str, f: impl FnOnce(&dyn StorageSerializer) -> R) -> eyre::Result<R> {

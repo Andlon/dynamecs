@@ -10,13 +10,11 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 /// Registers the "default" components [`Name`], [`TimeStep`], [`SimulationTime`] and [`StepIndex`].
-pub fn register_default_components() -> eyre::Result<()> {
-    register_component::<Name>()?;
-    register_component::<TimeStep>()?;
-    register_component::<SimulationTime>()?;
-    register_component::<StepIndex>()?;
-
-    Ok(())
+pub fn register_default_components() {
+    register_component::<Name>();
+    register_component::<TimeStep>();
+    register_component::<SimulationTime>();
+    register_component::<StepIndex>();
 }
 
 /// Associates an entity with a name.

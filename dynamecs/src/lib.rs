@@ -65,7 +65,7 @@ pub trait Component: 'static {
     type Storage: Storage;
 }
 
-pub fn register_component<C>() -> eyre::Result<RegistrationStatus>
+pub fn register_component<C>() -> RegistrationStatus
 where
     C: Component,
     C::Storage: SerializableStorage,
