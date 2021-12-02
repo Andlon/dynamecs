@@ -6,7 +6,7 @@ use dynamecs::components::{
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
 use dynamecs::{register_component, Component, System, Systems, Universe};
-use eyre::eyre;
+use eyre::{eyre, Context};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -169,7 +169,7 @@ impl<Config> DynamecsApp<Config> {
                 scenario.post_systems.run_all(state)?;
 
                 if let Some(checkpoint_system) = &mut self.checkpoint_system {
-                    checkpoint_system.run(state)?;
+                    checkpoint_system.run(state).wrap_err("failed to run checkpointing system")?;
                 }
             }
 

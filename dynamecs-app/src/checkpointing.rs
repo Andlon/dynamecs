@@ -90,7 +90,20 @@ impl<SerializeFn> ObserverSystem for CheckpointingSystem<SerializeFn>
 where
     SerializeFn: FnMut(fs::File, &Universe) -> eyre::Result<()>,
 {
+    fn name(&self) -> String {
+        "CheckpointingSystem".to_string()
+    }
+
     fn run(&mut self, universe: &Universe) -> eyre::Result<()> {
+        // Ensure that all components in the universe are registered
+        let unregistered_components = universe.unregistered_components();
+        if !unregistered_components.is_empty() {
+            return Err(eyre!(
+                "the following components are not registered: {:?}",
+                &unregistered_components
+            ));
+        }
+
         let settings = try_get_settings(universe)?;
         let checkpoint_path = settings.output_folder.join("checkpoints");
         // Ensure that the checkpoint output folder exists
