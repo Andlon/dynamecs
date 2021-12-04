@@ -95,15 +95,14 @@ impl<Config> DynamecsApp<Config> {
         Ok(self)
     }
 
-    /// Enables writing checkpoints for the app.
-    pub fn with_write_checkpoints(&mut self) -> &mut Self {
-        let checkpoint_system = compressed_binary_checkpointing_system();
-        self.checkpoint_system = Some(checkpoint_system.into());
+    /// Enables or disables writing checkpoints for the app.
+    pub fn write_checkpoints(&mut self, enable_write_checkpoints: bool) -> &mut Self {
+        self.checkpoint_system = enable_write_checkpoints.then(|| compressed_binary_checkpointing_system().into());
         self
     }
 
     /// Restores a checkpoint from the given file when the app is run.
-    pub fn with_restore_checkpoint<P: Into<PathBuf>>(&mut self, checkpoint_path: P) -> &mut Self {
+    pub fn restore_checkpoint<P: Into<PathBuf>>(&mut self, checkpoint_path: P) -> &mut Self {
         self.restore_from_checkpoint = Some(checkpoint_path.into());
         self
     }
@@ -169,7 +168,9 @@ impl<Config> DynamecsApp<Config> {
                 scenario.post_systems.run_all(state)?;
 
                 if let Some(checkpoint_system) = &mut self.checkpoint_system {
-                    checkpoint_system.run(state).wrap_err("failed to run checkpointing system")?;
+                    checkpoint_system
+                        .run(state)
+                        .wrap_err("failed to run checkpointing system")?;
                 }
             }
 

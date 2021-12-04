@@ -162,7 +162,9 @@ impl Systems {
 
     pub fn run_all(&mut self, data: &mut Universe) -> eyre::Result<()> {
         for system in &mut self.systems {
-            system.run(data).wrap_err_with(|| format!("failed to run system \"{}\"", system.name()))?;
+            system
+                .run(data)
+                .wrap_err_with(|| format!("failed to run system \"{}\"", system.name()))?;
         }
         Ok(())
     }
