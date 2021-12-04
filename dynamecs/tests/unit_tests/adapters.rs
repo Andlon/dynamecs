@@ -48,9 +48,9 @@ fn fn_once_system() {
 }
 
 #[derive(Debug)]
-struct MocSystem {}
+struct MockSystem {}
 
-impl MocSystem {
+impl MockSystem {
     fn runs(universe: &Universe) -> usize {
         universe
             .get_component_storage::<MocComponent>()
@@ -59,7 +59,7 @@ impl MocSystem {
     }
 }
 
-impl System for MocSystem {
+impl System for MockSystem {
     fn run(&mut self, universe: &mut Universe) -> eyre::Result<()> {
         universe
             .get_component_storage_mut::<MocComponent>()
@@ -82,115 +82,115 @@ impl Component for MocComponent {
 fn moc_system() {
     let mut universe = Universe::default();
 
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
-    let mut system = MocSystem {};
-
-    let res = system.run(&mut universe);
-    assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    let mut system = MockSystem {};
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 2);
+    assert_eq!(MockSystem::runs(&universe), 1);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 3);
+    assert_eq!(MockSystem::runs(&universe), 2);
+
+    let res = system.run(&mut universe);
+    assert!(res.is_ok());
+    assert_eq!(MockSystem::runs(&universe), 3);
 }
 
 #[test]
 fn single_shot_system() {
     let mut universe = Universe::default();
 
-    let mut system = SingleShotSystem::new(MocSystem {});
+    let mut system = SingleShotSystem::new(MockSystem {});
 
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
     assert_eq!(system.has_run(), false);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
     assert_eq!(system.has_run(), true);
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 }
 
 #[test]
 fn single_shot_system_combinator() {
     let mut universe = Universe::default();
 
-    let mut system = MocSystem {}.single_shot();
+    let mut system = MockSystem {}.single_shot();
 
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
     assert_eq!(system.has_run(), false);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
     assert_eq!(system.has_run(), true);
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 }
 
 #[test]
 fn filter_system() {
     let mut universe = Universe::default();
 
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let mut runs = 0;
-    let mut system = FilterSystem::new(MocSystem {}, move |_| {
+    let mut system = FilterSystem::new(MockSystem {}, move |_| {
         runs += 1;
         Ok(runs > 2)
     });
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 }
 
 #[test]
 fn filter_system_combinator() {
     let mut universe = Universe::default();
 
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let mut runs = 0;
-    let mut system = MocSystem {}.filter(move |_| {
+    let mut system = MockSystem {}.filter(move |_| {
         runs += 1;
         Ok(runs > 2)
     });
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 0);
+    assert_eq!(MockSystem::runs(&universe), 0);
 
     let res = system.run(&mut universe);
     assert!(res.is_ok());
-    assert_eq!(MocSystem::runs(&universe), 1);
+    assert_eq!(MockSystem::runs(&universe), 1);
 }

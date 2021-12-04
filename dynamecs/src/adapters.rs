@@ -37,7 +37,7 @@ pub struct SingleShotSystem<S: System> {
     has_run: bool,
 }
 
-/// Filter system that uses a closure to determine if the wrapped system should be run.
+/// Filter system that uses a closure to determine if the wrapped system should be run each timestep.
 pub struct FilterSystem<P, S>
 where
     P: FnMut(&Universe) -> eyre::Result<bool>,
@@ -49,7 +49,7 @@ where
     pub predicate: P,
 }
 
-/// Wrapper system that only runs if the [`SimulationTime`](`crate::components::SimulationTime`) reaches the specified time.
+/// Wrapper system that only runs starting from the timestep when the [`SimulationTime`](`crate::components::SimulationTime`) reached the specified activation time.
 pub struct DelayedSystem<S: System> {
     system: S,
     activation_time: f64,
