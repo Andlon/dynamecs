@@ -68,7 +68,7 @@ impl<Config> DynamecsApp<Config> {
         }
     }
 
-    pub fn with_scenario_initializer<I>(&mut self, initializer: I) -> eyre::Result<&mut Self>
+    pub fn with_scenario_initializer<I>(mut self, initializer: I) -> eyre::Result<Self>
     where
         I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
@@ -96,18 +96,18 @@ impl<Config> DynamecsApp<Config> {
     }
 
     /// Enables or disables writing checkpoints for the app.
-    pub fn write_checkpoints(&mut self, enable_write_checkpoints: bool) -> &mut Self {
+    pub fn write_checkpoints(mut self, enable_write_checkpoints: bool) -> Self {
         self.checkpoint_system = enable_write_checkpoints.then(|| compressed_binary_checkpointing_system().into());
         self
     }
 
     /// Restores a checkpoint from the given file when the app is run.
-    pub fn restore_checkpoint<P: Into<PathBuf>>(&mut self, checkpoint_path: P) -> &mut Self {
+    pub fn restore_checkpoint<P: Into<PathBuf>>(mut self, checkpoint_path: P) -> Self {
         self.restore_from_checkpoint = Some(checkpoint_path.into());
         self
     }
 
-    pub fn run(&mut self) -> eyre::Result<()> {
+    pub fn run(mut self) -> eyre::Result<()> {
         if let Some(scenario) = &mut self.scenario {
             // Register components of all systems
             register_default_components();
