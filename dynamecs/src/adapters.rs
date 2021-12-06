@@ -194,7 +194,7 @@ impl<S: System> Display for SingleShotSystem<S> {
 
 impl<S: System> System for SingleShotSystem<S> {
     fn name(&self) -> String {
-        todo!("Should probably take name as an (optional) constructor input")
+        format!("SingleShotSystem({})", self.system.name())
     }
 
     fn register_components(&self) {
@@ -248,7 +248,7 @@ where
     S: System,
 {
     fn name(&self) -> String {
-        todo!("Should probably take name as optional parameter to constructor")
+        format!("FilterSystem({})", self.system.name())
     }
 
     fn register_components(&self) {
@@ -278,7 +278,7 @@ impl<S: System> Display for DelayedSystem<S> {
 
 impl<S: System> System for DelayedSystem<S> {
     fn name(&self) -> String {
-        todo!("Should probably take name as an (optional) constructor input")
+        format!("DelayedSystem({})", self.system.name())
     }
 
     fn register_components(&self) {
