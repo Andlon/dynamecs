@@ -1,17 +1,19 @@
 //! Staging area for developing things that later will be moved to dynamecs
-use crate::components::{
-    get_simulation_time, get_step_index, DynamecsAppSettings, SimulationTime, StepIndex, TimeStep,
+use checkpointing::{compressed_binary_checkpointing_system, restore_checkpoint_file};
+use dynamecs::components::{
+    get_simulation_time, get_step_index, register_default_components, DynamecsAppSettings, SimulationTime, StepIndex,
+    TimeStep,
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
-use dynamecs::{Component, Systems, Universe};
-use eyre::eyre;
+use dynamecs::{register_component, Component, System, Systems, Universe};
+use eyre::{eyre, Context};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-pub mod components;
+mod checkpointing;
 
 #[derive(Debug)]
 pub struct Scenario {
@@ -47,6 +49,10 @@ pub struct DynamecsApp<Config = ()> {
     /// Optionally override the time step dt (otherwise use scenario-provided or default)
     dt_override: Option<f64>,
     max_steps: Option<usize>,
+    /// Optionally restore the simulation state from the given checkpoint file
+    restore_from_checkpoint: Option<PathBuf>,
+    /// Optional system for writing checkpoints
+    checkpoint_system: Option<Box<dyn System>>,
 }
 
 impl<Config> DynamecsApp<Config> {
@@ -57,33 +63,71 @@ impl<Config> DynamecsApp<Config> {
             scenario: None,
             dt_override: None,
             max_steps: None,
+            restore_from_checkpoint: None,
+            checkpoint_system: None,
         }
     }
 
-    pub fn with_scenario_initializer<I>(&mut self, initializer: I) -> eyre::Result<&mut Self>
+    pub fn with_scenario_initializer<I>(mut self, initializer: I) -> eyre::Result<Self>
     where
         I: FnOnce(&Config) -> eyre::Result<Scenario>,
     {
         let mut scenario = initializer(&self.config)?;
+
+        let scenario_name = scenario.name().to_string();
         let app_settings = DynamecsAppSettings {
+            output_folder: self.app_settings.output_folder.join(scenario_name),
             scenario_name: scenario.name().to_string(),
-            ..self.app_settings.clone()
         };
+
         scenario
             .state
             .insert_storage(ImmutableSingularStorage::new(app_settings));
+
         if let Some(dt) = self.dt_override {
             info!("Overriding time step dt = {}", dt);
             scenario
                 .state
                 .insert_storage(SingularStorage::new(TimeStep(dt)));
         }
+
         self.scenario = Some(scenario);
         Ok(self)
     }
 
-    pub fn run(&mut self) -> eyre::Result<()> {
+    /// Enables or disables writing checkpoints for the app.
+    pub fn write_checkpoints(mut self, enable_write_checkpoints: bool) -> Self {
+        self.checkpoint_system = enable_write_checkpoints.then(|| compressed_binary_checkpointing_system().into());
+        self
+    }
+
+    /// Restores a checkpoint from the given file when the app is run.
+    pub fn restore_checkpoint<P: Into<PathBuf>>(mut self, checkpoint_path: P) -> Self {
+        self.restore_from_checkpoint = Some(checkpoint_path.into());
+        self
+    }
+
+    pub fn run(mut self) -> eyre::Result<()> {
         if let Some(scenario) = &mut self.scenario {
+            // Register components of all systems
+            register_default_components();
+            register_component::<DynamecsAppSettings>();
+            scenario.pre_systems.register_components();
+            scenario.simulation_systems.register_components();
+            scenario.post_systems.register_components();
+
+            if let Some(checkpoint_path) = &self.restore_from_checkpoint {
+                let universe = restore_checkpoint_file(checkpoint_path)?;
+                scenario.state = universe;
+
+                let step_index = get_step_index(&scenario.state).0;
+                info!(
+                    "Restored simulation state with step index {} from file \"{}\"",
+                    step_index,
+                    checkpoint_path.display()
+                );
+            }
+
             info!("Starting simulation of scenario \"{}\"", scenario.name());
             loop {
                 let state = &mut scenario.state;
@@ -93,11 +137,11 @@ impl<Config> DynamecsApp<Config> {
 
                 if let Some(max_steps) = self.max_steps {
                     if step_index > max_steps {
-                        return Ok(());
+                        break;
                     }
                 } else if let Some(duration) = scenario.duration {
                     if sim_time >= duration {
-                        return Ok(());
+                        break;
                     }
                 }
 
@@ -122,7 +166,16 @@ impl<Config> DynamecsApp<Config> {
                 set_singular_component(state, StepIndex(step_index + 1));
 
                 scenario.post_systems.run_all(state)?;
+
+                if let Some(checkpoint_system) = &mut self.checkpoint_system {
+                    checkpoint_system
+                        .run(state)
+                        .wrap_err("failed to run checkpointing system")?;
+                }
             }
+
+            info!("Simulation ended");
+            Ok(())
         } else {
             Err(eyre!("cannot run scenario: no scenario initializer provided",))
         }
@@ -169,6 +222,16 @@ struct CliOptions {
         help = "Maximum number of simulation steps to take (by default infinite)"
     )]
     max_steps: Option<usize>,
+    #[structopt(
+        long = "write-checkpoints",
+        help = "Write a checkpoint file to disk after every timestep"
+    )]
+    write_checkpoints: bool,
+    #[structopt(
+        long = "restore-checkpoint",
+        help = "Restore the simulation state from a checkpoint file and continue the simulation"
+    )]
+    restore_checkpoint: Option<PathBuf>,
 }
 
 impl DynamecsApp<()> {
@@ -204,6 +267,10 @@ impl DynamecsApp<()> {
             }
         }
 
+        let checkpoint_system = opt
+            .write_checkpoints
+            .then(|| compressed_binary_checkpointing_system().into());
+
         // TODO: Support configuration string from CLI
         Ok(DynamecsApp {
             app_settings,
@@ -211,6 +278,8 @@ impl DynamecsApp<()> {
             scenario: None,
             dt_override: opt.dt,
             max_steps: opt.max_steps,
+            restore_from_checkpoint: opt.restore_checkpoint,
+            checkpoint_system,
         })
     }
 }

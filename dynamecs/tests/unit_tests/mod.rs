@@ -1,3 +1,4 @@
+mod adapters;
 mod basic_api;
 mod join;
 mod serialization;

@@ -36,15 +36,15 @@ pub fn register_factory(factory: Box<dyn StorageSerializer>) -> eyre::Result<Reg
     }
 }
 
-pub fn register_storage<S>() -> eyre::Result<RegistrationStatus>
+pub fn register_storage<S>() -> RegistrationStatus
 where
     S: SerializableStorage,
 {
     let factory = S::create_serializer();
-    register_factory(factory)
+    register_factory(factory).expect("internal error")
 }
 
-fn look_up_factory<R>(tag: &str, f: impl FnOnce(&dyn StorageSerializer) -> R) -> eyre::Result<R> {
+fn look_up_serializer<R>(tag: &str, f: impl FnOnce(&dyn StorageSerializer) -> R) -> eyre::Result<R> {
     let hash_map = REGISTRY
         .lock()
         .map_err(|_| eyre!("failed to obtain registry lock"))?;
@@ -105,7 +105,7 @@ impl<'a, 'b, 'de> serde::de::Visitor<'de> for &'b mut TaggedStorage<'a> {
             .ok_or_else(|| "missing tag in sequence")
             .map_err(serde::de::Error::custom)?;
 
-        look_up_factory(&tag, |factory| -> eyre::Result<_> {
+        look_up_serializer(&tag, |factory| -> eyre::Result<_> {
             let wrapper = FactoryWrapper {
                 factory: factory.deref(),
                 id_map: self.id_map,
@@ -142,7 +142,7 @@ impl<'de> serde::de::Visitor<'de> for StorageContainerVisitor {
         let mut tagged = TaggedStorage { id_map: &mut self.0 };
 
         while let Some((tag, storage)) = seq.next_element_seed(&mut tagged)? {
-            let type_id = look_up_factory(&tag, |factory| factory.storage_type_id()).map_err(|err| {
+            let type_id = look_up_serializer(&tag, |factory| factory.storage_type_id()).map_err(|err| {
                 serde::de::Error::custom(format!(
                     "No factory registered for tag. Cannot deserialize. Internal error: {}",
                     err
@@ -179,7 +179,7 @@ impl serde::Serialize for Universe {
         let storages = self.storages.borrow();
         let mut seq = serializer.serialize_seq(Some(storages.len()))?;
         for (_, TaggedTypeErasedStorage { tag, storage }) in storages.iter() {
-            look_up_factory(&tag, |factory| {
+            look_up_serializer(&tag, |factory| {
                 let serialize = factory
                     .serializable_storage(storage.as_ref())
                     .map_err(serde::ser::Error::custom)?;
@@ -191,5 +191,20 @@ impl serde::Serialize for Universe {
             .map_err(serde::ser::Error::custom)?;
         }
         seq.end()
+    }
+}
+
+impl Universe {
+    /// Returns tags of component storages that are currently present in this `Universe` but which are not registered (for serialization).
+    ///
+    /// This function can be helpful during development to ensure that all components are registered, e.g. by printing
+    /// a warning or error with the non-registered components.
+    pub fn unregistered_components(&self) -> Vec<String> {
+        let storages = self.storages.borrow();
+        storages
+            .iter()
+            .filter_map(|(_, TaggedTypeErasedStorage { tag, .. })| look_up_serializer(&tag, |_| {}).err().map(|_| tag))
+            .cloned()
+            .collect()
     }
 }
