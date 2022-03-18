@@ -1,6 +1,6 @@
 use crate::fetch::{FetchComponentStorages, FetchComponentStoragesMut};
 use crate::join::Join;
-use crate::{Component, Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity, Storage};
+use crate::{Component, Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity, register_component, SerializableStorage, Storage};
 use std::any::{Any, TypeId};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -134,6 +134,12 @@ impl Universe {
                     .expect("Downcast cannot fail since TypeIDs match");
                 *boxed
             })
+    }
+
+    /// Same as [`insert_storage`], but additionally registers the storage for deserialization.
+    pub fn register_insert_storage<S: SerializableStorage>(&mut self, storage: S) -> Option<S> {
+        register_storage::<S>();
+        self.insert_storage(storage)
     }
 
     /// Returns a mutable reference to the given storage.
@@ -318,6 +324,15 @@ impl Universe {
     {
         self.get_component_storage_mut::<C>()
             .insert_component_for_entity(entity, component)
+    }
+
+    /// Same as [`register_component`], but additionally registers the component for deserialization.
+    pub fn register_insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    where
+        C::Storage: SerializableStorage + Default + InsertComponentForEntity<C>,
+    {
+        register_component::<C>();
+        self.insert_component(component, entity);
     }
 
     #[deprecated]
