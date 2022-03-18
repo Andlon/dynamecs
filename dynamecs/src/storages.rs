@@ -3,40 +3,13 @@
 use std::collections::HashMap;
 
 use crate::join::{IntoJoinable, Joinable};
-use crate::serialization::{EntityDeserialize, EntitySerializationMap, SerializableEntity};
 use crate::{Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity};
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VecStorage<Component> {
     components: Vec<Component>,
     entities: Vec<Entity>,
     lookup_table: HashMap<Entity, usize>,
-}
-
-// Helper struct to ease implementation of deserialization
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-struct VecStorageCompanion<Component> {
-    components: Vec<Component>,
-    entities: Vec<SerializableEntity>,
-    lookup_table: HashMap<SerializableEntity, usize>,
-}
-
-impl<Component> VecStorageCompanion<Component> {
-    pub fn to_storage(self, id_map: &mut EntitySerializationMap) -> VecStorage<Component> {
-        VecStorage {
-            components: self.components,
-            entities: self
-                .entities
-                .into_iter()
-                .map(|id| id_map.deserialize_entity(id))
-                .collect(),
-            lookup_table: self
-                .lookup_table
-                .into_iter()
-                .map(|(id, idx)| (id_map.deserialize_entity(id), idx))
-                .collect(),
-        }
-    }
 }
 
 /// Stores component in a vector, with a one-to-one relationship between entities and components.
@@ -188,22 +161,8 @@ impl<C> GetComponentForEntityMut<C> for VecStorage<C> {
     }
 }
 
-impl<'de, Component> EntityDeserialize<'de> for VecStorage<Component>
-where
-    Component: serde::Deserialize<'de>,
-{
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        use serde::Deserialize;
-        let companion = VecStorageCompanion::<Component>::deserialize(deserializer)?;
-        Ok(companion.to_storage(id_map))
-    }
-}
-
 /// A Storage that stores a single component without any Entity relation.
-#[derive(Debug, Copy, Clone, serde::Serialize, Default)]
+#[derive(Debug, Copy, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SingularStorage<Component> {
     component: Component,
 }
@@ -222,22 +181,8 @@ impl<Component> SingularStorage<Component> {
     }
 }
 
-impl<'de, Component> EntityDeserialize<'de> for SingularStorage<Component>
-where
-    Component: EntityDeserialize<'de>,
-{
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        Ok(Self {
-            component: Component::entity_deserialize(deserializer, id_map)?,
-        })
-    }
-}
-
 /// A Storage that stores a single *immutable* component without any Entity relation.
-#[derive(Debug, Copy, Clone, serde::Serialize, Default)]
+#[derive(Debug, Copy, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ImmutableSingularStorage<Component> {
     component: Component,
 }
@@ -249,20 +194,6 @@ impl<Component> ImmutableSingularStorage<Component> {
 
     pub fn get_component(&self) -> &Component {
         &self.component
-    }
-}
-
-impl<'de, Component> EntityDeserialize<'de> for ImmutableSingularStorage<Component>
-where
-    Component: EntityDeserialize<'de>,
-{
-    fn entity_deserialize<D>(deserializer: D, id_map: &mut EntitySerializationMap) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        Ok(Self {
-            component: Component::entity_deserialize(deserializer, id_map)?,
-        })
     }
 }
 

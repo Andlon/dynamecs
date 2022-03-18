@@ -1,13 +1,16 @@
+use crate::fetch::{FetchComponentStorages, FetchComponentStoragesMut};
+use crate::join::Join;
+use crate::{
+    register_component, Component, Entity, EntityFactory, GetComponentForEntity, GetComponentForEntityMut,
+    InsertComponentForEntity, SerializableStorage, Storage,
+};
 use std::any::{Any, TypeId};
 use std::cell::RefCell;
 use std::collections::HashMap;
-
-pub use universe_serialize::{register_factory, register_storage, RegistrationStatus};
-
-use crate::fetch::{FetchComponentStorages, FetchComponentStoragesMut};
-use crate::join::Join;
-use crate::{Component, Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity, Storage};
 use std::fmt::{Debug, Formatter};
+use std::ops::{Deref, DerefMut};
+
+pub use universe_serialize::{register_serializer, register_storage, RegistrationStatus};
 
 // Make universe_serialize a submodule of this module, so that it can still
 // access private members of `StorageContainer`, without exposing this to the rest of the
@@ -15,15 +18,13 @@ use std::fmt::{Debug, Formatter};
 mod universe_serialize;
 
 /// A container of component storages.
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Universe {
     // Invariant: We never remove a storage from the hash map, so that the
     // Box<dyn Any> contained inside the type erased storage struct always points to the same
     // object in memory, until the Universe is destroyed. This allows us to safely
     // return (mutable) references by unsafely dereference pointers to the storages
     // (observing Rust's rules on references)
-    // TODO: Use a faster hash?
-    storages: RefCell<HashMap<TypeId, TaggedTypeErasedStorage>>,
     // TODO: The current design is not fully sound due to pointer provenance (see various comments in method impls).
     // In order to hopefully get closer to a fully sound impl, a different design is required. One possiblity would
     // be to have:
@@ -32,10 +33,32 @@ pub struct Universe {
     // That way at least we never have to use any unsafe code for interaction with the HashMap,
     // and through UnsafeCell we can soundly obtain a mutable reference to the vector in order to get mutable
     // pointers to the storages (although there are some provenance issues to be aware of here)
+    storages: Storages,
+    entity_factory: EntityFactory,
+}
+
+#[derive(Default)]
+struct Storages {
+    // TODO: Use a faster hash?
+    storages: RefCell<HashMap<TypeId, TaggedTypeErasedStorage>>,
+}
+
+impl Deref for Storages {
+    type Target = RefCell<HashMap<TypeId, TaggedTypeErasedStorage>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.storages
+    }
+}
+
+impl DerefMut for Storages {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.storages
+    }
 }
 
 struct TaggedTypeErasedStorage {
-    // tag is used for serialization/deserialization, obtained through the associated factory
+    // tag is used for serialization/deserialization, obtained through the associated serializer
     // of the Storage
     // TODO: Move tag to Storage trait, then provide tag as constructor parameter?
     tag: String,
@@ -43,6 +66,11 @@ struct TaggedTypeErasedStorage {
 }
 
 impl Universe {
+    /// Create a new entity associated with this universe.
+    pub fn new_entity(&self) -> Entity {
+        self.entity_factory.new_entity()
+    }
+
     /// Returns the provided storage if it already exists.
     pub fn try_get_storage<S: Storage>(&self) -> Option<&S> {
         self.storages
@@ -135,6 +163,12 @@ impl Universe {
                     .expect("Downcast cannot fail since TypeIDs match");
                 *boxed
             })
+    }
+
+    /// Same as [`insert_storage`](Self::insert_storage), but additionally registers the storage for deserialization.
+    pub fn register_insert_storage<S: SerializableStorage>(&mut self, storage: S) -> Option<S> {
+        register_storage::<S>();
+        self.insert_storage(storage)
     }
 
     /// Returns a mutable reference to the given storage.
@@ -313,6 +347,25 @@ impl Universe {
         storages.join()
     }
 
+    pub fn insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    where
+        C::Storage: Default + InsertComponentForEntity<C>,
+    {
+        self.get_component_storage_mut::<C>()
+            .insert_component_for_entity(entity, component)
+    }
+
+    /// Same as [`insert_component`](Self::insert_component), but additionally registers the component
+    /// for deserialization.
+    pub fn register_insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    where
+        C::Storage: SerializableStorage + Default + InsertComponentForEntity<C>,
+    {
+        register_component::<C>();
+        self.insert_component(component, entity);
+    }
+
+    #[deprecated = "Use register_component instead"]
     pub fn insert_component_for_entity<C: Component>(&mut self, entity: Entity, component: C)
     where
         C::Storage: Default + InsertComponentForEntity<C>,
