@@ -1,4 +1,4 @@
-use crate::serialization::{EntityDeserialize, EntitySerializationMap, GenericStorageSerializer};
+use crate::serialization::GenericStorageSerializer;
 use adapters::{DelayedSystem, FilterSystem, SingleShotSystem};
 use eyre::Context;
 use std::any::{Any, TypeId};
@@ -12,6 +12,7 @@ pub mod components;
 mod entity;
 pub mod fetch;
 pub mod join;
+#[doc(hidden)]
 pub mod serialization;
 pub mod storages;
 mod universe;
@@ -19,13 +20,12 @@ mod universe;
 pub trait StorageSerializer: Send + Sync {
     fn storage_tag(&self) -> String;
 
-    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> eyre::Result<&'a dyn erased_serde::Serialize>;
+    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> Option<&'a dyn erased_serde::Serialize>;
 
     fn deserialize_storage(
         &self,
         deserializer: &mut dyn erased_serde::Deserializer,
-        id_map: &mut EntitySerializationMap,
-    ) -> eyre::Result<Box<dyn Any>>;
+    ) -> Result<Box<dyn Any>, erased_serde::Error>;
 
     fn storage_type_id(&self) -> TypeId;
 }
@@ -40,14 +40,14 @@ pub trait Storage: 'static {
 
 impl<S: 'static> Storage for S {}
 
-pub trait SerializableStorage: Storage + serde::Serialize + for<'de> EntityDeserialize<'de> {
+pub trait SerializableStorage: Storage + serde::Serialize + for<'de> serde::Deserialize<'de> {
     fn create_serializer() -> Box<dyn StorageSerializer> {
         let factory = GenericStorageSerializer::<Self>::new();
         Box::new(factory)
     }
 }
 
-impl<S> SerializableStorage for S where S: Storage + serde::Serialize + for<'de> EntityDeserialize<'de> {}
+impl<S> SerializableStorage for S where S: Storage + serde::Serialize + for<'de> serde::Deserialize<'de> {}
 
 pub trait InsertComponentForEntity<C> {
     fn insert_component_for_entity(&mut self, entity: Entity, component: C);

@@ -1,5 +1,5 @@
 use dynamecs::storages::VecStorage;
-use dynamecs::{register_component, Component, Entity, Universe};
+use dynamecs::{register_component, Component, Universe};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,9 +17,11 @@ fn main() -> eyre::Result<()> {
 
     let mut universe = Universe::default();
 
+    let entity1 = universe.new_entity();
+    let entity2 = universe.new_entity();
     let storage = universe.get_component_storage_mut::<TestComponent>();
-    storage.insert(Entity::new(), TestComponent(0));
-    storage.insert(Entity::new(), TestComponent(1));
+    storage.insert(entity1, TestComponent(0));
+    storage.insert(entity2, TestComponent(1));
 
     let json = serde_json::to_string_pretty(&universe)?;
 

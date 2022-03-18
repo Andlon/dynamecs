@@ -1,10 +1,8 @@
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 
-use erased_serde::Serialize;
-use eyre::eyre;
+use erased_serde::{Deserializer, Error, Serialize};
 
-use crate::serialization::{EntityDeserialize, EntitySerializationMap};
 use crate::{Storage, StorageSerializer};
 
 /// Generic storage serializer.
@@ -29,26 +27,20 @@ unsafe impl<Storage> Send for GenericStorageSerializer<Storage> {}
 
 impl<S> StorageSerializer for GenericStorageSerializer<S>
 where
-    S: 'static + Storage + serde::Serialize,
-    for<'de> S: EntityDeserialize<'de>,
+    S: 'static + Storage + serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     fn storage_tag(&self) -> String {
         S::tag()
     }
 
-    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> eyre::Result<&'a dyn Serialize> {
+    fn serializable_storage<'a>(&self, storage: &'a dyn Any) -> Option<&'a dyn Serialize> {
         storage
             .downcast_ref::<S>()
             .map(|storage| storage as &dyn Serialize)
-            .ok_or_else(|| eyre!("provided storage is not known to factory"))
     }
 
-    fn deserialize_storage(
-        &self,
-        deserializer: &mut dyn erased_serde::Deserializer,
-        id_map: &mut EntitySerializationMap,
-    ) -> eyre::Result<Box<dyn Any>> {
-        let storage = S::entity_deserialize(deserializer, id_map)?;
+    fn deserialize_storage<'a>(&self, deserializer: &mut dyn Deserializer) -> Result<Box<dyn Any>, Error> {
+        let storage = S::deserialize(deserializer)?;
         Ok(Box::new(storage))
     }
 

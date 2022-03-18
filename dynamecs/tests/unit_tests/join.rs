@@ -38,12 +38,12 @@ struct TestData {
     c_storage: VecStorage<C>,
 }
 
-impl Default for TestData {
-    fn default() -> Self {
-        let v = Entity::new();
-        let x = Entity::new();
-        let y = Entity::new();
-        let z = Entity::new();
+impl TestData {
+    pub fn new_for_universe(universe: &Universe) -> Self {
+        let v = universe.new_entity();
+        let x = universe.new_entity();
+        let y = universe.new_entity();
+        let z = universe.new_entity();
 
         let mut a_storage = VecStorage::default();
         a_storage.insert(v, A(1));
@@ -77,7 +77,8 @@ impl Default for TestData {
 #[rustfmt::skip]
 fn join_multiple_storages() {
     // Construct several storages, try to join different combinations and compare with expected results
-    let TestData { v, x, y, z, mut a_storage, mut b_storage, mut c_storage } = TestData::default();
+    let universe = Universe::default();
+    let TestData { v, x, y, z, mut a_storage, mut b_storage, mut c_storage } = TestData::new_for_universe(&universe);
 
     // A-B
     {
@@ -125,6 +126,7 @@ fn join_multiple_storages() {
 
 #[test]
 fn universe_join_is_consistent_with_join() {
+    let universe = Universe::default();
     let TestData {
         v,
         x,
@@ -132,7 +134,7 @@ fn universe_join_is_consistent_with_join() {
         b_storage,
         c_storage,
         ..
-    } = TestData::default();
+    } = TestData::new_for_universe(&universe);
 
     let mut universe = Universe::default();
     universe.insert_storage(a_storage);
