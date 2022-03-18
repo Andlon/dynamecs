@@ -13,7 +13,7 @@ impl Component for TestComponent {
 }
 
 fn main() -> eyre::Result<()> {
-    register_component::<TestComponent>()?;
+    register_component::<TestComponent>();
 
     let mut universe = Universe::default();
 

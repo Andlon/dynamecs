@@ -20,8 +20,8 @@ impl Component for Bar {
 #[test]
 // TODO: Replace `json_roundtrip` with this one once we kick out `Universe`
 fn json_roundtrip() {
-    register_component::<Foo>().unwrap();
-    register_component::<Bar>().unwrap();
+    register_component::<Foo>();
+    register_component::<Bar>();
 
     let mut universe = Universe::default();
 
