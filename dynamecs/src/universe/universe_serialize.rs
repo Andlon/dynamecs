@@ -18,9 +18,9 @@ static REGISTRY: Lazy<Mutex<HashMap<String, Box<dyn StorageSerializer>>>> = Lazy
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RegistrationStatus {
-    /// Indicates that the factory did not already exist in the registry, so it was inserted.
+    /// Indicates that the serializer did not already exist in the registry, so it was inserted.
     Inserted,
-    /// Indicates that a factory was already registered for the given typename, but it was
+    /// Indicates that a serializer was already registered for the given tag, but it was
     /// replaced by the new factory.
     Replaced,
 }

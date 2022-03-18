@@ -42,8 +42,8 @@ impl<S: 'static> Storage for S {}
 
 pub trait SerializableStorage: Storage + serde::Serialize + for<'de> serde::Deserialize<'de> {
     fn create_serializer() -> Box<dyn StorageSerializer> {
-        let factory = GenericStorageSerializer::<Self>::new();
-        Box::new(factory)
+        let serializer = GenericStorageSerializer::<Self>::new();
+        Box::new(serializer)
     }
 }
 

@@ -58,7 +58,7 @@ impl DerefMut for Storages {
 }
 
 struct TaggedTypeErasedStorage {
-    // tag is used for serialization/deserialization, obtained through the associated factory
+    // tag is used for serialization/deserialization, obtained through the associated serializer
     // of the Storage
     // TODO: Move tag to Storage trait, then provide tag as constructor parameter?
     tag: String,
