@@ -1,13 +1,12 @@
-use std::any::{Any, TypeId};
-use std::cell::RefCell;
-use std::collections::HashMap;
-
-pub use universe_serialize::{register_factory, register_storage, RegistrationStatus};
-
 use crate::fetch::{FetchComponentStorages, FetchComponentStoragesMut};
 use crate::join::Join;
 use crate::{Component, Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity, Storage};
+use std::any::{Any, TypeId};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+
+pub use universe_serialize::{register_factory, register_storage, RegistrationStatus};
 
 // Make universe_serialize a submodule of this module, so that it can still
 // access private members of `StorageContainer`, without exposing this to the rest of the
