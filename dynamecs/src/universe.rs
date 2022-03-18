@@ -312,6 +312,15 @@ impl Universe {
         storages.join()
     }
 
+    pub fn insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    where
+        C::Storage: Default + InsertComponentForEntity<C>,
+    {
+        self.get_component_storage_mut::<C>()
+            .insert_component_for_entity(entity, component)
+    }
+
+    #[deprecated]
     pub fn insert_component_for_entity<C: Component>(&mut self, entity: Entity, component: C)
     where
         C::Storage: Default + InsertComponentForEntity<C>,
