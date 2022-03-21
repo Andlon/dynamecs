@@ -347,7 +347,7 @@ impl Universe {
         storages.join()
     }
 
-    pub fn insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    pub fn insert_component<C: Component>(&mut self, entity: Entity, component: C)
     where
         C::Storage: Default + InsertComponentForEntity<C>,
     {
@@ -357,12 +357,12 @@ impl Universe {
 
     /// Same as [`insert_component`](Self::insert_component), but additionally registers the component
     /// for deserialization.
-    pub fn register_insert_component<C: Component>(&mut self, component: C, entity: Entity)
+    pub fn register_insert_component<C: Component>(&mut self, entity: Entity, component: C)
     where
         C::Storage: SerializableStorage + Default + InsertComponentForEntity<C>,
     {
         register_component::<C>();
-        self.insert_component(component, entity);
+        self.insert_component(entity, component);
     }
 
     #[deprecated = "Use register_component instead"]
