@@ -150,8 +150,9 @@ pub struct Systems {
 }
 
 impl Systems {
-    pub fn add_system<S: Into<Box<dyn System>>>(&mut self, system: S) {
+    pub fn add_system<S: Into<Box<dyn System>>>(&mut self, system: S) -> &mut Self {
         self.systems.push(system.into());
+        self
     }
 
     pub fn register_components(&self) {
