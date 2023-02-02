@@ -13,6 +13,9 @@ use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+pub extern crate eyre;
+pub extern crate serde;
+
 mod checkpointing;
 
 #[derive(Debug)]
