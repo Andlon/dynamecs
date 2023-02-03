@@ -240,7 +240,7 @@ struct CliOptions {
 impl DynamecsApp<()> {
     pub fn configure_from_cli<Config>() -> eyre::Result<DynamecsApp<Config>>
     where
-        Config: Default + Serialize,
+        Config: Serialize,
         for<'de> Config: Deserialize<'de>,
     {
         let opt = CliOptions::from_args();
@@ -253,8 +253,15 @@ impl DynamecsApp<()> {
             info!("Read config file from {}.", path.display());
             config
         } else {
-            info!("No configuration specified. Using default configuration.");
-            Config::default()
+            let default_config_str = "{}";
+            info!("No configuration specified. Using {}.", default_config_str);
+            let config = serde_json::from_str("{}").wrap_err_with(|| {
+                "Failed to deserialize the JSON string `{}` \
+                into a valid configuration. You must either supply a non-empty \
+                configuration or make sure that your struct can be deserialized \
+                from an empty JSON struct"
+            })?;
+            config
         };
         let config_json_str = serde_json::to_string_pretty(&config)?;
         info!("Using configuration: \n{}", config_json_str);
