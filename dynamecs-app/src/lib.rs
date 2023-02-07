@@ -10,7 +10,7 @@ use eyre::{eyre, Context};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 pub extern crate eyre;
@@ -292,4 +292,11 @@ impl DynamecsApp<()> {
             checkpoint_system,
         })
     }
+}
+
+/// Returns the intended root directory for app output.
+///
+/// The returned path is relative to the current working directory.
+pub fn get_output_path() -> &'static Path {
+    Path::new("output")
 }
