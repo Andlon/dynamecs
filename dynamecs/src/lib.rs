@@ -6,6 +6,7 @@ use std::fmt::Debug;
 
 pub use entity::*;
 pub use universe::*;
+use crate::join::Optional;
 
 pub mod adapters;
 pub mod components;

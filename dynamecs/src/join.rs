@@ -177,5 +177,5 @@ impl<'a, C> Join for &'a VecStorage<C> {
 }
 
 /// Marker for a storage whose components are optional.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Optional<Storage>(pub Storage);

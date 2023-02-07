@@ -213,11 +213,18 @@ fn universe_join_is_consistent_with_join() {
     let TestData {
         v,
         x,
+        y,
+        z,
         a_storage,
         b_storage,
         c_storage,
         ..
     } = TestData::new_for_universe(&universe);
+
+    // TODO: Remove this
+    // let b_temp = Optional(b_storage.clone());
+    // let ab_opt: Vec<_> = (&a_storage, &b_temp).join().collect();
+    // assert_eq!(ab_opt, vec![(v, &A(1), Some(&B(1))), (x, &A(2), Some(&B(2))), (y, &A(3), None), (z, &A(4), Some(&B(3)))]);
 
     let mut universe = Universe::default();
     universe.insert_storage(a_storage);
@@ -237,4 +244,11 @@ fn universe_join_is_consistent_with_join() {
             (x, &mut A(2), &mut B(2), &mut C(2))
         ]
     );
+
+    // Test that Optional syntax also works
+    let ab_opt: Vec<_> = universe.join::<(&A, &Optional<B>)>().collect();
+    assert_eq!(ab_opt, vec![(v, &A(1), Some(&B(1))), (x, &A(2), Some(&B(2))), (y, &A(3), None), (z, &A(4), Some(&B(3)))]);
+
+    // let ab_opt_c: Vec<_> = universe.join::<(&A, &Optional<B>, &C)>().collect();
+    // assert_eq!(ab_opt_c, vec![(v, &A(1), Some(&B(1)), &C(1)), (x, &A(2), Some(&B(2)), &C(2)), (y, &A(3), None, &C(3))]);
 }

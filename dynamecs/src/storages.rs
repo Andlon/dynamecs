@@ -281,6 +281,16 @@ impl<'a, C> IntoJoinable<'a> for Optional<&'a VecStorage<C>> {
     }
 }
 
+impl<'a, C> IntoJoinable<'a> for &'a Optional<VecStorage<C>> {
+    type Joinable = VecStorageOptionalJoinable<'a, C>;
+
+    fn into_joinable(self) -> Self::Joinable {
+        VecStorageOptionalJoinable {
+            joinable: <&'a VecStorage<C>>::into_joinable(&self.0)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct VecStorageOptionalJoinableMut<'a, C> {
     joinable: VecStorageJoinableMut<'a, C>,
