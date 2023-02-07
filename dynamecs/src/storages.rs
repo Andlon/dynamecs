@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::join::{IntoJoinable, Joinable};
+use crate::join::{IntoJoinable, Joinable, Optional};
 use crate::{Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -253,6 +253,54 @@ impl<'a, C> IntoJoinable<'a> for &'a mut VecStorage<C> {
         VecStorageJoinableMut {
             lookup_table: &self.lookup_table,
             components: self.components.as_mut_ptr(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct VecStorageOptionalJoinable<'a, C> {
+    joinable: VecStorageJoinable<'a, C>,
+}
+
+impl<'a, C: 'a> Joinable<'a> for VecStorageOptionalJoinable<'a, C> {
+    type ComponentRef = Option<&'a C>;
+
+    unsafe fn try_make_component_ref(&mut self, entity: Entity) -> Option<Self::ComponentRef> {
+        let component = self.joinable.try_make_component_ref(entity);
+        Some(component)
+    }
+}
+
+impl<'a, C> IntoJoinable<'a> for Optional<&'a VecStorage<C>> {
+    type Joinable = VecStorageOptionalJoinable<'a, C>;
+
+    fn into_joinable(self) -> Self::Joinable {
+        VecStorageOptionalJoinable {
+            joinable: self.0.into_joinable(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct VecStorageOptionalJoinableMut<'a, C> {
+    joinable: VecStorageJoinableMut<'a, C>,
+}
+
+impl<'a, C: 'a> Joinable<'a> for VecStorageOptionalJoinableMut<'a, C> {
+    type ComponentRef = Option<&'a mut C>;
+
+    unsafe fn try_make_component_ref(&mut self, entity: Entity) -> Option<Self::ComponentRef> {
+        let component = self.joinable.try_make_component_ref(entity);
+        Some(component)
+    }
+}
+
+impl<'a, C> IntoJoinable<'a> for Optional<&'a mut VecStorage<C>> {
+    type Joinable = VecStorageOptionalJoinableMut<'a, C>;
+
+    fn into_joinable(self) -> Self::Joinable {
+        VecStorageOptionalJoinableMut {
+            joinable: self.0.into_joinable(),
         }
     }
 }

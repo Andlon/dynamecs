@@ -175,3 +175,7 @@ impl<'a, C> Join for &'a VecStorage<C> {
         self.entity_component_iter()
     }
 }
+
+/// Marker for a storage whose components are optional.
+#[derive(Debug, Clone)]
+pub struct Optional<Storage>(pub Storage);
