@@ -212,6 +212,11 @@ struct CliOptions {
     )]
     config_file: Option<PathBuf>,
     #[structopt(
+        long,
+        help = "A scenario configuration as a (properly quoted) JSON string."
+    )]
+    config_string: Option<String>,
+    #[structopt(
         short = "o",
         long = "output-dir",
         help = "Output base directory, relative or absolute.",
@@ -247,11 +252,18 @@ impl DynamecsApp<()> {
 
         info!("Output base path: {}", opt.output_dir.display());
 
+        if opt.config_file.is_some() && opt.config_string.is_some() {
+            return Err(eyre!("config file and config string are mutually exclusive"));
+        }
+
         let config = if let Some(path) = opt.config_file {
             let file = File::open(&path)?;
             let config = serde_json::from_reader(file)?;
             info!("Read config file from {}.", path.display());
             config
+        } else if let Some(config_str) = opt.config_string {
+            info!("Using configuration provided from CLI interface");
+            serde_json::from_str(&config_str)?
         } else {
             let default_config_str = "{}";
             info!("No configuration specified. Using {}.", default_config_str);
@@ -281,7 +293,6 @@ impl DynamecsApp<()> {
             .write_checkpoints
             .then(|| compressed_binary_checkpointing_system().into());
 
-        // TODO: Support configuration string from CLI
         Ok(DynamecsApp {
             app_settings,
             config,
