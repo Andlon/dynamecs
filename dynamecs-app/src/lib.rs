@@ -9,7 +9,7 @@ use dynamecs::{register_component, Component, System, Systems, Universe};
 use eyre::{eyre, Context};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{read_to_string};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
@@ -208,12 +208,12 @@ struct CliOptions {
     #[structopt(
         short,
         long,
-        help = "The path (relative or absolute) to a scenario-specific configuration file."
+        help = "The path (relative or absolute) to a scenario-specific JSON5 configuration file."
     )]
     config_file: Option<PathBuf>,
     #[structopt(
         long,
-        help = "A scenario configuration as a (properly quoted) JSON string."
+        help = "A scenario configuration as a JSON5 string."
     )]
     config_string: Option<String>,
     #[structopt(
@@ -257,24 +257,25 @@ impl DynamecsApp<()> {
         }
 
         let config = if let Some(path) = opt.config_file {
-            let file = File::open(&path)?;
-            let config = serde_json::from_reader(file)?;
+            let config = json5::from_str(&read_to_string(&path)?)?;
             info!("Read config file from {}.", path.display());
             config
         } else if let Some(config_str) = opt.config_string {
             info!("Using configuration provided from CLI interface");
-            serde_json::from_str(&config_str)?
+            json5::from_str(&config_str)?
         } else {
             let default_config_str = "{}";
             info!("No configuration specified. Using {}.", default_config_str);
-            let config = serde_json::from_str("{}").wrap_err_with(|| {
-                "Failed to deserialize the JSON string `{}` \
+            let config = json5::from_str("{}").wrap_err_with(|| {
+                "Failed to deserialize the JSON5 string `{}` \
                 into a valid configuration. You must either supply a non-empty \
                 configuration or make sure that your struct can be deserialized \
                 from an empty JSON struct"
             })?;
             config
         };
+        // TODO: We use serde_json because json5 cannot pretty-print JSON, and unfortunately
+        // its serializer is limited to producing JSON
         let config_json_str = serde_json::to_string_pretty(&config)?;
         info!("Using configuration: \n{}", config_json_str);
 
