@@ -7,7 +7,7 @@ use dynamecs::components::{
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
 use dynamecs::{register_component, Component, System, Systems, Universe};
 use eyre::{eyre, Context};
-use log::{debug, info};
+use tracing::{debug, info, info_span, instrument};
 use serde::{Deserialize, Serialize};
 use std::fs::{read_to_string};
 use std::path::{Path, PathBuf};
@@ -15,8 +15,12 @@ use structopt::StructOpt;
 
 pub extern crate eyre;
 pub extern crate serde;
+pub extern crate tracing;
 
 mod checkpointing;
+mod tracing_impl;
+
+pub use tracing_impl::setup_tracing;
 
 #[derive(Debug)]
 pub struct Scenario {
@@ -110,6 +114,7 @@ impl<Config> DynamecsApp<Config> {
         self
     }
 
+    #[instrument(level = "info", skip_all)]
     pub fn run(mut self) -> eyre::Result<()> {
         if let Some(scenario) = &mut self.scenario {
             // Register components of all systems
@@ -137,6 +142,8 @@ impl<Config> DynamecsApp<Config> {
                 let SimulationTime(mut sim_time) = get_simulation_time(&*state);
                 let StepIndex(step_index) = get_step_index(&*state);
                 let TimeStep(dt) = get_time_step_or_set_default(state);
+
+                let _span = info_span!("step", step_index).entered();
 
                 if let Some(max_steps) = self.max_steps {
                     if step_index > max_steps {
