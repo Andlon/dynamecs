@@ -3,9 +3,13 @@ use std::io::BufWriter;
 use std::sync::Mutex;
 use chrono::{Local};
 use eyre::WrapErr;
+use structopt::StructOpt;
+use tracing::info;
 use tracing_subscriber::{fmt, Registry};
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::{Writer};
 use tracing_subscriber::prelude::*;
+use crate::cli::CliOptions;
 use crate::get_output_path;
 
 /// Sets up `tracing`.
@@ -27,15 +31,13 @@ pub fn setup_tracing() -> eyre::Result<()> {
     create_dir_all(&archive_dir)
         .wrap_err("failed to create log archive directory")?;
 
-    let log_file = BufWriter::new(File::create(log_file_path)
+    let log_file = BufWriter::new(File::create(&log_file_path)
         .wrap_err("failed to create main log file")?);
-    let json_log_file = BufWriter::new(File::create(json_log_file_path)
+    let json_log_file = BufWriter::new(File::create(&json_log_file_path)
         .wrap_err("failed to create json log file")?);
-    // TODO: Could maybe combine both main and archive files into a single Layer
-    // for possible performance benefits, instead of processing them separately
-    let archive_log_file = BufWriter::new(File::create(archive_log_file_path)
+    let archive_log_file = BufWriter::new(File::create(&archive_log_file_path)
         .wrap_err("failed to create archive log file")?);
-    let archive_json_log_file = BufWriter::new(File::create(archive_json_log_file_path)
+    let archive_json_log_file = BufWriter::new(File::create(&archive_json_log_file_path)
         .wrap_err("failed to create archive json log file")?);
 
     // Use custom timer formatting so that we only include minimal info in stdout.
@@ -45,19 +47,30 @@ pub fn setup_tracing() -> eyre::Result<()> {
         write!(writer, "{time}")
     };
 
+    let cli_options = CliOptions::from_args();
+
     let stdout_layer = fmt::Layer::default()
         .compact()
-        .with_timer(stdout_timer as fn(&mut Writer) -> std::fmt::Result);
+        .with_timer(stdout_timer as fn(&mut Writer) -> std::fmt::Result)
+        .with_filter(LevelFilter::from_level(cli_options.console_log_level));
+
+    // TODO: Could maybe combine both main and archive files into a single Layer
+    // for possible performance benefits, instead of processing them all separately.
+
     let log_file_layer = fmt::Layer::default()
-        .with_writer(Mutex::new(log_file));
+        .with_writer(Mutex::new(log_file))
+        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let json_log_file_layer = fmt::Layer::default()
         .json()
-        .with_writer(Mutex::new(json_log_file));
+        .with_writer(Mutex::new(json_log_file))
+        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let archive_log_file_layer = fmt::Layer::default()
-        .with_writer(Mutex::new(archive_log_file));
+        .with_writer(Mutex::new(archive_log_file))
+        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let archive_json_log_file_layer = fmt::Layer::default()
         .json()
-        .with_writer(Mutex::new(archive_json_log_file));
+        .with_writer(Mutex::new(archive_json_log_file))
+        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
 
     let subscriber = Registry::default()
         .with(stdout_layer)
@@ -66,6 +79,14 @@ pub fn setup_tracing() -> eyre::Result<()> {
         .with(archive_log_file_layer)
         .with(archive_json_log_file_layer);
     tracing::subscriber::set_global_default(subscriber)?;
+
+    let working_dir = std::env::current_dir().wrap_err("failed to retrieve current working directory")?;
+    info!(target: "dynamecs_app", "Working directory: {}", working_dir.display());
+    info!(target: "dynamecs_app", "Logging text to stdout with log level {}", cli_options.console_log_level.to_string());
+    info!(target: "dymamecs_app", "Logging text to file {} with log level {}", log_file_path.display(), cli_options.file_log_level);
+    info!(target: "dynamecs_app", "Logging JSON to file {} with log level {}", json_log_file_path.display(), cli_options.file_log_level);
+    info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
+    info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
 
     Ok(())
 }

@@ -1,10 +1,10 @@
 use eyre::eyre;
 use eyre::Context;
-use log::info;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::path::Path;
 use std::{fmt, fs};
+use tracing::info;
 
 use dynamecs::components::{get_step_index, try_get_settings};
 use dynamecs::{ObserverSystem, Universe};

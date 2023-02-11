@@ -1,22 +1,24 @@
-//! Staging area for developing things that later will be moved to dynamecs
+//! Opinionated framework for building simulation apps with `dynamecs`.
 use checkpointing::{compressed_binary_checkpointing_system, restore_checkpoint_file};
 use dynamecs::components::{
-    get_simulation_time, get_step_index, register_default_components, DynamecsAppSettings, SimulationTime, StepIndex,
+    DynamecsAppSettings, get_simulation_time, get_step_index, register_default_components, SimulationTime, StepIndex,
     TimeStep,
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
-use dynamecs::{register_component, Component, System, Systems, Universe};
-use eyre::{eyre, Context};
+use dynamecs::{Component, register_component, System, Systems, Universe};
+use eyre::{Context, eyre};
 use tracing::{debug, info, info_span, instrument};
 use serde::{Deserialize, Serialize};
-use std::fs::{read_to_string};
+use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use cli::CliOptions;
 
 pub extern crate eyre;
 pub extern crate serde;
 pub extern crate tracing;
 
+mod cli;
 mod checkpointing;
 mod tracing_impl;
 
@@ -208,45 +210,6 @@ fn get_time_step_or_set_default(state: &mut Universe) -> TimeStep {
         info!("No time step configured. Using default dt = {}", default_dt.0);
         default_dt.clone()
     }
-}
-
-#[derive(StructOpt)]
-struct CliOptions {
-    #[structopt(
-        short,
-        long,
-        help = "The path (relative or absolute) to a scenario-specific JSON5 configuration file."
-    )]
-    config_file: Option<PathBuf>,
-    #[structopt(
-        long,
-        help = "A scenario configuration as a JSON5 string."
-    )]
-    config_string: Option<String>,
-    #[structopt(
-        short = "o",
-        long = "output-dir",
-        help = "Output base directory, relative or absolute.",
-        default_value = "output"
-    )]
-    output_dir: PathBuf,
-    #[structopt(long = "dt", help = "Override the time step used for the simulation.")]
-    dt: Option<f64>,
-    #[structopt(
-        long = "max-steps",
-        help = "Maximum number of simulation steps to take (by default infinite)"
-    )]
-    max_steps: Option<usize>,
-    #[structopt(
-        long = "write-checkpoints",
-        help = "Write a checkpoint file to disk after every timestep"
-    )]
-    write_checkpoints: bool,
-    #[structopt(
-        long = "restore-checkpoint",
-        help = "Restore the simulation state from a checkpoint file and continue the simulation"
-    )]
-    restore_checkpoint: Option<PathBuf>,
 }
 
 impl DynamecsApp<()> {
