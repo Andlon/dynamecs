@@ -5,6 +5,7 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 publish = true
+description = "An opinionated ECS-like architecture for time-dependent simulations"
 
 [dependencies]
 dynamecs = { path = "../dynamecs" }

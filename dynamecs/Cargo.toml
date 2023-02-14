@@ -5,6 +5,7 @@ authors = [ "Andreas Longva" ]
 edition = "2021"
 license = "MIT"
 publish = true
+description = "An opinionated ECS-like architecture for time-dependent simulations"
 
 [dependencies]
 serde = { version="1.0", features=["derive"] }
