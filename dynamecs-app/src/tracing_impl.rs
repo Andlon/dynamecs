@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use tracing::info;
 use tracing_subscriber::{fmt, Registry};
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt::format::{Writer};
+use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::prelude::*;
 use crate::cli::CliOptions;
 use crate::get_output_path;
@@ -62,6 +62,7 @@ pub fn setup_tracing() -> eyre::Result<()> {
         .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let json_log_file_layer = fmt::Layer::default()
         .json()
+        .with_span_events(FmtSpan::ACTIVE)
         .with_writer(Mutex::new(json_log_file))
         .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let archive_log_file_layer = fmt::Layer::default()
@@ -69,6 +70,7 @@ pub fn setup_tracing() -> eyre::Result<()> {
         .with_filter(LevelFilter::from_level(cli_options.file_log_level));
     let archive_json_log_file_layer = fmt::Layer::default()
         .json()
+        .with_span_events(FmtSpan::ACTIVE)
         .with_writer(Mutex::new(archive_json_log_file))
         .with_filter(LevelFilter::from_level(cli_options.file_log_level));
 
