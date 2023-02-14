@@ -1,5 +1,6 @@
 //! Opinionated framework for building simulation apps with `dynamecs`.
 use checkpointing::{compressed_binary_checkpointing_system, restore_checkpoint_file};
+use clap::Parser;
 use cli::CliOptions;
 use dynamecs::components::{
     get_simulation_time, get_step_index, register_default_components, DynamecsAppSettings, SimulationTime, StepIndex,
@@ -11,7 +12,6 @@ use eyre::{eyre, Context};
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
 use tracing::{debug, info, info_span, instrument};
 
 pub extern crate eyre;
@@ -218,7 +218,7 @@ impl DynamecsApp<()> {
         Config: Serialize,
         for<'de> Config: Deserialize<'de>,
     {
-        let opt = CliOptions::from_args();
+        let opt = CliOptions::parse();
 
         info!("Output base path: {}", opt.output_dir.display());
 

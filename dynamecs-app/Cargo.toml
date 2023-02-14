@@ -9,7 +9,7 @@ description = "An opinionated ECS-like architecture for time-dependent simulatio
 
 [dependencies]
 dynamecs = { path = "../dynamecs", version = "0.0.1" }
-structopt = "0.3.22"
+clap = { version = "4.1.4", features = [ "derive" ] }
 serde = "1.0.127"
 serde_json = "1.0.66"
 json5 = "0.4.1"

@@ -1,11 +1,11 @@
 use crate::cli::CliOptions;
 use crate::get_output_path;
 use chrono::Local;
+use clap::Parser;
 use eyre::WrapErr;
 use std::fs::{create_dir_all, File};
 use std::io::LineWriter;
 use std::sync::Mutex;
-use structopt::StructOpt;
 use tracing::info;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::prelude::*;
@@ -42,7 +42,7 @@ pub fn setup_tracing() -> eyre::Result<()> {
         write!(writer, "{time}")
     };
 
-    let cli_options = CliOptions::from_args();
+    let cli_options = CliOptions::parse();
 
     let stdout_layer = fmt::Layer::default()
         .compact()
