@@ -3,7 +3,8 @@ name = "dynamecs"
 version = "0.0.1"
 authors = [ "Andreas Longva" ]
 edition = "2021"
-publish = false
+license = "MIT"
+publish = true
 
 [dependencies]
 serde = { version="1.0", features=["derive"] }
