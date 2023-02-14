@@ -1,5 +1,5 @@
 use std::fs::{create_dir_all, File};
-use std::io::BufWriter;
+use std::io::LineWriter;
 use std::sync::Mutex;
 use chrono::{Local};
 use eyre::WrapErr;
@@ -31,13 +31,13 @@ pub fn setup_tracing() -> eyre::Result<()> {
     create_dir_all(&archive_dir)
         .wrap_err("failed to create log archive directory")?;
 
-    let log_file = BufWriter::new(File::create(&log_file_path)
+    let log_file = LineWriter::new(File::create(&log_file_path)
         .wrap_err("failed to create main log file")?);
-    let json_log_file = BufWriter::new(File::create(&json_log_file_path)
+    let json_log_file = LineWriter::new(File::create(&json_log_file_path)
         .wrap_err("failed to create json log file")?);
-    let archive_log_file = BufWriter::new(File::create(&archive_log_file_path)
+    let archive_log_file = LineWriter::new(File::create(&archive_log_file_path)
         .wrap_err("failed to create archive log file")?);
-    let archive_json_log_file = BufWriter::new(File::create(&archive_json_log_file_path)
+    let archive_json_log_file = LineWriter::new(File::create(&archive_json_log_file_path)
         .wrap_err("failed to create archive json log file")?);
 
     // Use custom timer formatting so that we only include minimal info in stdout.
