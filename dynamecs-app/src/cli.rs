@@ -1,7 +1,7 @@
+use crate::get_output_path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::Level;
-use crate::get_output_path;
 
 #[derive(StructOpt)]
 pub struct CliOptions {
@@ -11,10 +11,7 @@ pub struct CliOptions {
         help = "The path (relative or absolute) to a scenario-specific JSON5 configuration file."
     )]
     pub config_file: Option<PathBuf>,
-    #[structopt(
-        long,
-        help = "A scenario configuration as a JSON5 string."
-    )]
+    #[structopt(long, help = "A scenario configuration as a JSON5 string.")]
     pub config_string: Option<String>,
     #[structopt(
         short = "o",
@@ -44,14 +41,14 @@ pub struct CliOptions {
         long,
         default_value = "info",
         help = "Log level to use for logging to the console. \
-                Possible values: error, warn, info, debug, trace.",
+                Possible values: error, warn, info, debug, trace."
     )]
     pub console_log_level: Level,
     #[structopt(
         long,
         default_value = "debug",
         help = "Log level to use for text and JSON log files. \
-                Possible values: error, warn, info, debug, trace.",
+                Possible values: error, warn, info, debug, trace."
     )]
     pub file_log_level: Level,
 }

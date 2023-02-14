@@ -1,25 +1,25 @@
 //! Opinionated framework for building simulation apps with `dynamecs`.
 use checkpointing::{compressed_binary_checkpointing_system, restore_checkpoint_file};
+use cli::CliOptions;
 use dynamecs::components::{
-    DynamecsAppSettings, get_simulation_time, get_step_index, register_default_components, SimulationTime, StepIndex,
+    get_simulation_time, get_step_index, register_default_components, DynamecsAppSettings, SimulationTime, StepIndex,
     TimeStep,
 };
 use dynamecs::storages::{ImmutableSingularStorage, SingularStorage};
-use dynamecs::{Component, register_component, System, Systems, Universe};
-use eyre::{Context, eyre};
-use tracing::{debug, info, info_span, instrument};
+use dynamecs::{register_component, Component, System, Systems, Universe};
+use eyre::{eyre, Context};
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use cli::CliOptions;
+use tracing::{debug, info, info_span, instrument};
 
 pub extern crate eyre;
 pub extern crate serde;
 pub extern crate tracing;
 
-mod cli;
 mod checkpointing;
+mod cli;
 mod tracing_impl;
 
 pub use tracing_impl::setup_tracing;
