@@ -1,7 +1,7 @@
 use crate::get_output_path;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tracing::Level;
+use tracing_subscriber::filter::LevelFilter;
 
 #[derive(StructOpt)]
 pub struct CliOptions {
@@ -41,14 +41,14 @@ pub struct CliOptions {
         long,
         default_value = "info",
         help = "Log level to use for logging to the console. \
-                Possible values: error, warn, info, debug, trace."
+                Possible values: off, error, warn, info, debug, trace."
     )]
-    pub console_log_level: Level,
+    pub console_log_level: LevelFilter,
     #[structopt(
         long,
         default_value = "debug",
         help = "Log level to use for text and JSON log files. \
-                Possible values: error, warn, info, debug, trace."
+                Possible values: off, error, warn, info, debug, trace."
     )]
-    pub file_log_level: Level,
+    pub file_log_level: LevelFilter,
 }

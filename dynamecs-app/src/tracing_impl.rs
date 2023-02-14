@@ -7,7 +7,6 @@ use std::io::LineWriter;
 use std::sync::Mutex;
 use structopt::StructOpt;
 use tracing::info;
-use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, Registry};
@@ -48,27 +47,27 @@ pub fn setup_tracing() -> eyre::Result<()> {
     let stdout_layer = fmt::Layer::default()
         .compact()
         .with_timer(stdout_timer as fn(&mut Writer) -> std::fmt::Result)
-        .with_filter(LevelFilter::from_level(cli_options.console_log_level));
+        .with_filter(cli_options.console_log_level);
 
     // TODO: Could maybe combine both main and archive files into a single Layer
     // for possible performance benefits, instead of processing them all separately.
 
     let log_file_layer = fmt::Layer::default()
         .with_writer(Mutex::new(log_file))
-        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
+        .with_filter(cli_options.file_log_level);
     let json_log_file_layer = fmt::Layer::default()
         .json()
         .with_span_events(FmtSpan::ACTIVE)
         .with_writer(Mutex::new(json_log_file))
-        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
+        .with_filter(cli_options.file_log_level);
     let archive_log_file_layer = fmt::Layer::default()
         .with_writer(Mutex::new(archive_log_file))
-        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
+        .with_filter(cli_options.file_log_level);
     let archive_json_log_file_layer = fmt::Layer::default()
         .json()
         .with_span_events(FmtSpan::ACTIVE)
         .with_writer(Mutex::new(archive_json_log_file))
-        .with_filter(LevelFilter::from_level(cli_options.file_log_level));
+        .with_filter(cli_options.file_log_level);
 
     let subscriber = Registry::default()
         .with(stdout_layer)
