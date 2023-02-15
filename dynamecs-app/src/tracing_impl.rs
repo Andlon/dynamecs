@@ -4,7 +4,6 @@ use chrono::Local;
 use clap::Parser;
 use eyre::WrapErr;
 use std::fs::{create_dir_all, File};
-use std::io::LineWriter;
 use std::sync::Mutex;
 use tracing::info;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
@@ -28,12 +27,11 @@ pub fn setup_tracing() -> eyre::Result<()> {
     create_dir_all(&log_dir).wrap_err("failed to create log directory")?;
     create_dir_all(&archive_dir).wrap_err("failed to create log archive directory")?;
 
-    let log_file = LineWriter::new(File::create(&log_file_path).wrap_err("failed to create main log file")?);
-    let json_log_file = LineWriter::new(File::create(&json_log_file_path).wrap_err("failed to create json log file")?);
-    let archive_log_file =
-        LineWriter::new(File::create(&archive_log_file_path).wrap_err("failed to create archive log file")?);
+    let log_file = File::create(&log_file_path).wrap_err("failed to create main log file")?;
+    let json_log_file = File::create(&json_log_file_path).wrap_err("failed to create json log file")?;
+    let archive_log_file = File::create(&archive_log_file_path).wrap_err("failed to create archive log file")?;
     let archive_json_log_file =
-        LineWriter::new(File::create(&archive_json_log_file_path).wrap_err("failed to create archive json log file")?);
+        File::create(&archive_json_log_file_path).wrap_err("failed to create archive json log file")?;
 
     // Use custom timer formatting so that we only include minimal info in stdout.
     // The log files contain more accurate time stamps
