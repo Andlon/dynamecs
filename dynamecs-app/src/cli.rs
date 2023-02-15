@@ -51,4 +51,10 @@ pub struct CliOptions {
                 Possible values: off, error, warn, info, debug, trace."
     )]
     pub file_log_level: LevelFilter,
+    #[arg(
+        long = "override",
+        help = "Override a configuration option using the syntax <path.in.json>=<new value>. \
+        Multiple overrides are applied in sequence."
+    )]
+    pub overrides: Vec<String>,
 }

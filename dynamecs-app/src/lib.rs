@@ -20,6 +20,7 @@ pub extern crate tracing;
 
 mod checkpointing;
 mod cli;
+mod config_override;
 mod tracing_impl;
 
 pub use tracing_impl::setup_tracing;
@@ -226,7 +227,7 @@ impl DynamecsApp<()> {
             return Err(eyre!("config file and config string are mutually exclusive"));
         }
 
-        let config = if let Some(path) = opt.config_file {
+        let mut config = if let Some(path) = opt.config_file {
             let config = json5::from_str(&read_to_string(&path)?)?;
             info!("Read config file from {}.", path.display());
             config
@@ -244,6 +245,18 @@ impl DynamecsApp<()> {
             })?;
             config
         };
+
+        if !opt.overrides.is_empty() {
+            let config_json_value: serde_json::Value = serde_json::to_value(&config)
+                .wrap_err("failed to serialize configuration to JSON value for applying overrides")?;
+            let overridden_config: serde_json::Value =
+                config_override::apply_config_overrides(config_json_value, &opt.overrides)?;
+            config = serde_json::from_value(overridden_config).wrap_err(eyre!(
+                "invalid config overrides: cannot deserialize configuration from \
+                overridden configuration"
+            ))?;
+        }
+
         // TODO: We use serde_json because json5 cannot pretty-print JSON, and unfortunately
         // its serializer is limited to producing JSON
         let config_json_str = serde_json::to_string_pretty(&config)?;
