@@ -12,7 +12,7 @@ use eyre::{eyre, Context};
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
-use tracing::{debug, info, info_span, instrument};
+use tracing::{debug, info, info_span, instrument, warn};
 
 pub extern crate eyre;
 pub extern crate serde;
@@ -227,35 +227,39 @@ impl DynamecsApp<()> {
             return Err(eyre!("config file and config string are mutually exclusive"));
         }
 
-        let mut config = if let Some(path) = opt.config_file {
-            let config = json5::from_str(&read_to_string(&path)?)?;
-            info!("Read config file from {}.", path.display());
-            config
+        let mut config_json: serde_json::Value = if let Some(path) = opt.config_file {
+            info!("Reading config file from {}.", path.display());
+            let config_str = read_to_string(&path)
+                .wrap_err_with(|| format!("failed to read config file at {}", path.display()))?;
+            json5::from_str(&config_str)
+                .wrap_err("failed to parse configuration file as JSON5")
         } else if let Some(config_str) = opt.config_string {
             info!("Using configuration provided from CLI interface");
-            json5::from_str(&config_str)?
+            json5::from_str(&config_str)
+                .wrap_err("failed to parse configuration string as JSON5")
         } else {
             let default_config_str = "{}";
-            info!("No configuration specified. Using {}.", default_config_str);
-            let config = json5::from_str("{}").wrap_err_with(|| {
-                "Failed to deserialize the JSON5 string `{}` \
-                into a valid configuration. You must either supply a non-empty \
-                configuration or make sure that your struct can be deserialized \
-                from an empty JSON struct"
-            })?;
-            config
-        };
+            info!(r#"No configuration specified. Using the empty document {} as default."#, default_config_str);
+            Ok(json5::from_str("{}").expect("can always deserialize empty document"))
+        }?;
 
         if !opt.overrides.is_empty() {
-            let config_json_value: serde_json::Value = serde_json::to_value(&config)
-                .wrap_err("failed to serialize configuration to JSON value for applying overrides")?;
             let overridden_config: serde_json::Value =
-                config_override::apply_config_overrides(config_json_value, &opt.overrides)?;
-            config = serde_json::from_value(overridden_config).wrap_err(eyre!(
+                config_override::apply_config_overrides(config_json, &opt.overrides)?;
+            config_json = serde_json::from_value(overridden_config)
+                .wrap_err_with(||
                 "invalid config overrides: cannot deserialize configuration from \
                 overridden configuration"
-            ))?;
+            )?;
         }
+
+        // Emit warnings whenever we run into JSON fields that are not part of the
+        // configuration
+        let config: Config = serde_ignored::deserialize(config_json, |path| {
+            warn!("Ignored unknown field {} during deserialization of configuration",
+                  path.to_string());
+        })
+            .wrap_err("failed to deserialize JSON configuration into a valid configuration")?;
 
         // TODO: We use serde_json because json5 cannot pretty-print JSON, and unfortunately
         // its serializer is limited to producing JSON
