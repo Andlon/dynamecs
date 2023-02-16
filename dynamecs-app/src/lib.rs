@@ -295,3 +295,64 @@ impl DynamecsApp<()> {
 pub fn get_output_path() -> &'static Path {
     Path::new("output")
 }
+
+/// Convenience macro for generating an appropriate main function for use with `dynamecs-app`.
+///
+/// The macro sets up logging through the `tracing` integration, configures a `DynamecsApp`
+/// based on CLI arguments and runs the scenario defined by the given scenario initializer.
+///
+/// For example, consider the following program.
+/// ```no_run
+/// use serde::{Deserialize, Serialize};
+/// use dynamecs_app::{dynamecs_main, Scenario};
+///
+/// #[derive(Debug, Serialize, Deserialize)]
+/// struct Config {
+///     resolution: usize
+/// }
+///
+/// fn initialize_scenario(_config: &Config) -> eyre::Result<Scenario> {
+///     todo!()
+/// }
+///
+/// dynamecs_main!(initialize_scenario);
+/// ```
+/// For this example, the macro expands to
+/// ```no_run
+/// # #[derive(Debug, serde::Serialize, serde::Deserialize)]
+/// # struct Config {}
+/// # fn initialize_scenario(_config: &Config) -> eyre::Result<dynamecs_app::Scenario> { todo!() }
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
+///         dynamecs_app::setup_tracing()?;
+///         dynamecs_app::DynamecsApp::configure_from_cli()?
+///             .with_scenario_initializer(initialize_scenario)?
+///             .run()?;
+///         Ok(())
+///     }
+///
+///     main_internal().map_err(|err| {
+///         tracing::error!("{err:#}");
+///         err
+///     })
+/// }
+/// ```
+#[macro_export]
+macro_rules! dynamecs_main {
+    ($scenario:expr) => {
+        fn main() -> Result<(), Box<dyn std::error::Error>> {
+            fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
+                $crate::setup_tracing()?;
+                $crate::DynamecsApp::configure_from_cli()?
+                    .with_scenario_initializer($scenario)?
+                    .run()?;
+                Ok(())
+            }
+
+            main_internal().map_err(|err| {
+                $crate::tracing::error!("{err:#}");
+                err
+            })
+        }
+    }
+}
