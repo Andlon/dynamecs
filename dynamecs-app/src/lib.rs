@@ -229,37 +229,46 @@ impl DynamecsApp<()> {
 
         let mut config_json: serde_json::Value = if let Some(path) = opt.config_file {
             info!("Reading config file from {}.", path.display());
-            let config_str = read_to_string(&path)
-                .wrap_err_with(|| format!("failed to read config file at {}", path.display()))?;
-            json5::from_str(&config_str)
-                .wrap_err("failed to parse configuration file as JSON5")
+            let config_str =
+                read_to_string(&path).wrap_err_with(|| format!("failed to read config file at {}", path.display()))?;
+            json5::from_str(&config_str).wrap_err("failed to parse configuration file as JSON5")
         } else if let Some(config_str) = opt.config_string {
             info!("Using configuration provided from CLI interface");
-            json5::from_str(&config_str)
-                .wrap_err("failed to parse configuration string as JSON5")
+            json5::from_str(&config_str).wrap_err("failed to parse configuration string as JSON5")
         } else {
             let default_config_str = "{}";
-            info!(r#"No configuration specified. Using the empty document {} as default."#, default_config_str);
+            info!(
+                r#"No configuration specified. Using the empty document {} as default."#,
+                default_config_str
+            );
             Ok(json5::from_str("{}").expect("can always deserialize empty document"))
         }?;
 
         if !opt.overrides.is_empty() {
             let overridden_config: serde_json::Value =
                 config_override::apply_config_overrides(config_json, &opt.overrides)?;
-            config_json = serde_json::from_value(overridden_config)
-                .wrap_err_with(||
+            config_json = serde_json::from_value(overridden_config).wrap_err_with(|| {
                 "invalid config overrides: cannot deserialize configuration from \
                 overridden configuration"
-            )?;
+            })?;
         }
 
         // Emit warnings whenever we run into JSON fields that are not part of the
         // configuration
-        let config: Config = serde_ignored::deserialize(config_json, |path| {
-            warn!("Ignored unknown field {} during deserialization of configuration",
-                  path.to_string());
+        let config: Config = serde_ignored::deserialize(&config_json, |path| {
+            warn!(
+                "Ignored unknown field {} during deserialization of configuration",
+                path.to_string()
+            );
         })
-            .wrap_err("failed to deserialize JSON configuration into a valid configuration")?;
+        .wrap_err_with(|| {
+            let json_str = serde_json::to_string_pretty(&config_json)
+                .unwrap_or_else(|err| format!("<failed to serialize to JSON: {err}>"));
+            format!(
+                "failed to deserialize the following JSON configuration \
+                into a valid configuration: \n{json_str}"
+            )
+        })?;
 
         // TODO: We use serde_json because json5 cannot pretty-print JSON, and unfortunately
         // its serializer is limited to producing JSON
@@ -358,5 +367,5 @@ macro_rules! dynamecs_main {
                 err
             })
         }
-    }
+    };
 }

@@ -24,10 +24,8 @@ fn recursively_apply_config_override(
                 Ok(())
             }
         } else {
-            let mut new_obj_map = Map::new();
             if let Some(tail) = tail {
-                new_obj_map.insert(tail.to_string(), serde_json::Value::Object(Map::new()));
-                let mut new_obj = serde_json::Value::Object(new_obj_map);
+                let mut new_obj = serde_json::Value::Object(Map::new());
                 recursively_apply_config_override(&mut new_obj, tail, value)?;
                 obj.insert(head.to_string(), new_obj);
                 Ok(())
@@ -76,6 +74,7 @@ pub fn apply_config_overrides(
 mod tests {
     use crate::config_override::apply_config_override;
     use serde::{Deserialize, Serialize};
+    use serde_json::json;
     use std::collections::HashMap;
 
     /// Just a mock struct to contain some bogus info for unit tests
@@ -92,17 +91,17 @@ mod tests {
         stats: MeshStats,
     }
 
+    macro_rules! assert_override_eq {
+        ($input_cfg:expr ; $config_type:ty, override = $override:expr, => $expected_cfg:expr) => {{
+            let mut config_json = serde_json::to_value($input_cfg.clone()).unwrap();
+            apply_config_override(&mut config_json, $override).unwrap();
+            let overridden_config: $config_type = serde_json::from_value(config_json).unwrap();
+            assert_eq!(&overridden_config, &$expected_cfg);
+        }};
+    }
+
     #[test]
     fn test_basic_override() {
-        macro_rules! assert_override_eq {
-            ($input_cfg:expr, override = $override:expr, => $expected_cfg:expr) => {{
-                let mut config_json = serde_json::to_value($input_cfg.clone()).unwrap();
-                apply_config_override(&mut config_json, $override).unwrap();
-                let overridden_config: MockConfig = serde_json::from_value(config_json).unwrap();
-                assert_eq!(&overridden_config, &$expected_cfg);
-            }};
-        }
-
         let input_cfg = MockConfig {
             resolution: 4,
             name: "Bear".to_string(),
@@ -114,13 +113,13 @@ mod tests {
             },
         };
 
-        assert_override_eq!(input_cfg,
+        assert_override_eq!(input_cfg; MockConfig,
                             override = "resolution=3",
                             => MockConfig { resolution: 3, .. input_cfg.clone() });
-        assert_override_eq!(input_cfg,
+        assert_override_eq!(input_cfg; MockConfig,
                             override = r#"name="Cat""#,
                             => MockConfig { name: "Cat".to_string(), .. input_cfg.clone() });
-        assert_override_eq!(input_cfg,
+        assert_override_eq!(input_cfg; MockConfig,
                             override = r#"stats.num_verts=5"#,
                             => MockConfig { stats: MeshStats { num_verts: 5, .. input_cfg.stats.clone() }, .. input_cfg.clone() });
 
@@ -135,7 +134,7 @@ mod tests {
                 },
                 ..input_cfg.clone()
             };
-            assert_override_eq!(input_cfg,
+            assert_override_eq!(input_cfg; MockConfig,
                             override = r#"stats.map.boundary=5"#,
                             => expected);
         }
@@ -152,9 +151,65 @@ mod tests {
                 },
                 ..input_cfg.clone()
             };
-            assert_override_eq!(input_cfg,
+            assert_override_eq!(input_cfg; MockConfig,
                             override = r#"stats.map.middle=7"#,
                             => expected);
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    struct MockSettings {}
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(tag = "method", content = "settings")]
+    enum Solver {
+        Solver1(MockSettings),
+        Solver2(MockSettings),
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct SimSettings {
+        solver: Solver,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct MockConfig2 {
+        sim_settings: SimSettings,
+    }
+
+    #[test]
+    fn test_override_adjacently_tagged() {
+        // Note: This is a simplified test case from something that failed in a real application
+
+        let config = MockConfig2 {
+            sim_settings: SimSettings {
+                solver: Solver::Solver1(MockSettings {}),
+            },
+        };
+
+        let expected = MockConfig2 {
+            sim_settings: SimSettings {
+                solver: Solver::Solver2(MockSettings {}),
+            },
+        };
+
+        assert_override_eq!(config; MockConfig2,
+                            override = r#"sim_settings.solver.method='Solver2'"#,
+                            => expected);
+
+        {
+            let mut config_json = serde_json::Value::Object(Default::default());
+            apply_config_override(&mut config_json, "sim_settings.solver.method='Solver2'").unwrap();
+            assert_eq!(
+                config_json,
+                json!({
+                    "sim_settings": {
+                        "solver": {
+                            "method": "Solver2"
+                        }
+                    }
+                })
+            );
         }
     }
 }
