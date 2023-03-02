@@ -363,7 +363,12 @@ macro_rules! dynamecs_main {
             }
 
             main_internal().map_err(|err| {
-                $crate::tracing::error!("{err:#}");
+                let msg = if let Some(source) = err.source() {
+                    format!("{err:#},\ncaused by: {}", source)
+                } else {
+                    format!("{err:#}")
+                };
+                $crate::tracing::error!("{msg}");
                 err
             })
         }
