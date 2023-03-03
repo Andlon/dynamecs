@@ -305,7 +305,18 @@ impl DynamecsApp<()> {
 /// Returns the intended root directory for app output.
 ///
 /// The returned path is relative to the current working directory.
-pub fn get_output_path() -> &'static Path {
+pub fn get_output_path() -> PathBuf {
+    let cli_args = CliOptions::parse();
+    cli_args.output_dir
+}
+
+/// Returns the *default* intended root directory for app output.
+///
+/// The returned path is relative to the current working directory.
+///
+/// This is the default path used when not overriden through the command-line interface.
+/// Users would probably usually want to use [`get_output_path`] instead.
+pub fn get_default_output_path() -> &'static Path {
     Path::new("output")
 }
 

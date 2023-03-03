@@ -1,4 +1,4 @@
-use crate::get_output_path;
+use crate::get_default_output_path;
 use clap::Parser;
 use std::path::PathBuf;
 use tracing_subscriber::filter::LevelFilter;
@@ -17,7 +17,7 @@ pub struct CliOptions {
         short = 'o',
         long = "output-dir",
         help = "Output base directory, relative or absolute.",
-        default_value = get_output_path().to_str().expect("will always be valid string")
+        default_value = get_default_output_path().to_str().expect("will always be valid string")
     )]
     pub output_dir: PathBuf,
     #[arg(long = "dt", help = "Override the time step used for the simulation.")]
