@@ -113,7 +113,7 @@ pub fn try_get_timestep(state: &Universe) -> eyre::Result<TimeStep> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DynamecsAppSettings {
-    pub output_folder: PathBuf,
+    pub scenario_output_dir: PathBuf,
     pub scenario_name: String,
 }
 

@@ -1,5 +1,5 @@
 use crate::cli::CliOptions;
-use crate::get_output_path;
+use crate::get_output_dir;
 use chrono::Local;
 use clap::Parser;
 use eyre::WrapErr;
@@ -14,7 +14,7 @@ use tracing_subscriber::{fmt, Registry};
 ///
 /// TODO: Describe what it actually does, i.e. log to stdout, file etc.
 pub fn setup_tracing() -> eyre::Result<()> {
-    let log_dir = get_output_path().join("logs");
+    let log_dir = get_output_dir().join("logs");
     let log_file_path = log_dir.join("dynamecs_app.log");
     let json_log_file_path = log_dir.join("dynamecs_app.json");
 

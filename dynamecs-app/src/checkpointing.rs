@@ -104,8 +104,9 @@ where
             ));
         }
 
-        let settings = try_get_settings(universe)?;
-        let checkpoint_path = settings.output_folder.join("checkpoints");
+        let checkpoint_path = &try_get_settings(universe)?
+            .scenario_output_dir
+            .join("checkpoints");
         // Ensure that the checkpoint output folder exists
         fs::create_dir_all(&checkpoint_path).wrap_err_with(|| {
             format!(

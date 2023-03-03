@@ -53,7 +53,6 @@ impl Scenario {
 }
 
 pub struct DynamecsApp<Config = ()> {
-    app_settings: DynamecsAppSettings,
     config: Config,
     scenario: Option<Scenario>,
     /// Optionally override the time step dt (otherwise use scenario-provided or default)
@@ -66,9 +65,8 @@ pub struct DynamecsApp<Config = ()> {
 }
 
 impl<Config> DynamecsApp<Config> {
-    pub fn from_config_and_app_settings(config: Config, app_settings: DynamecsAppSettings) -> Self {
+    pub fn from_config_and_app_settings(config: Config) -> Self {
         Self {
-            app_settings,
             config,
             scenario: None,
             dt_override: None,
@@ -86,8 +84,8 @@ impl<Config> DynamecsApp<Config> {
 
         let scenario_name = scenario.name().to_string();
         let app_settings = DynamecsAppSettings {
-            output_folder: self.app_settings.output_folder.join(scenario_name),
-            scenario_name: scenario.name().to_string(),
+            scenario_output_dir: get_output_dir().join(&scenario_name),
+            scenario_name,
         };
 
         scenario
@@ -275,11 +273,6 @@ impl DynamecsApp<()> {
         let config_json_str = serde_json::to_string_pretty(&config)?;
         info!("Using configuration: \n{}", config_json_str);
 
-        let app_settings = DynamecsAppSettings {
-            output_folder: opt.output_dir,
-            scenario_name: "Unnamed".to_string(),
-        };
-
         if let Some(dt) = opt.dt {
             if dt <= 0.0 {
                 return Err(eyre!("time step dt must be positive"));
@@ -291,7 +284,6 @@ impl DynamecsApp<()> {
             .then(|| compressed_binary_checkpointing_system().into());
 
         Ok(DynamecsApp {
-            app_settings,
             config,
             scenario: None,
             dt_override: opt.dt,
@@ -305,7 +297,7 @@ impl DynamecsApp<()> {
 /// Returns the intended root directory for app output.
 ///
 /// The returned path is relative to the current working directory.
-pub fn get_output_path() -> PathBuf {
+pub fn get_output_dir() -> PathBuf {
     let cli_args = CliOptions::parse();
     cli_args.output_dir
 }
@@ -315,8 +307,8 @@ pub fn get_output_path() -> PathBuf {
 /// The returned path is relative to the current working directory.
 ///
 /// This is the default path used when not overriden through the command-line interface.
-/// Users would probably usually want to use [`get_output_path`] instead.
-pub fn get_default_output_path() -> &'static Path {
+/// Users would probably usually want to use [`get_output_dir`] instead.
+pub fn get_default_output_dir() -> &'static Path {
     Path::new("output")
 }
 
