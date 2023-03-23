@@ -3,7 +3,9 @@ use crate::get_output_dir;
 use chrono::Local;
 use clap::Parser;
 use eyre::WrapErr;
+use std::cmp::min;
 use std::fs::{create_dir_all, File};
+use std::io::Write;
 use std::sync::Mutex;
 use tracing::info;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
@@ -47,32 +49,22 @@ pub fn setup_tracing() -> eyre::Result<()> {
         .with_timer(stdout_timer as fn(&mut Writer) -> std::fmt::Result)
         .with_filter(cli_options.console_log_level);
 
-    // TODO: Could maybe combine both main and archive files into a single Layer
-    // for possible performance benefits, instead of processing them all separately.
-
     let log_file_layer = fmt::Layer::default()
-        .with_writer(Mutex::new(log_file))
+        .with_writer(Mutex::new(MultiWriter::from_writers(vec![log_file, archive_log_file])))
         .with_filter(cli_options.file_log_level);
     let json_log_file_layer = fmt::Layer::default()
         .json()
         .with_span_events(FmtSpan::ACTIVE)
-        .with_writer(Mutex::new(json_log_file))
-        .with_filter(cli_options.file_log_level);
-    let archive_log_file_layer = fmt::Layer::default()
-        .with_writer(Mutex::new(archive_log_file))
-        .with_filter(cli_options.file_log_level);
-    let archive_json_log_file_layer = fmt::Layer::default()
-        .json()
-        .with_span_events(FmtSpan::ACTIVE)
-        .with_writer(Mutex::new(archive_json_log_file))
+        .with_writer(Mutex::new(MultiWriter::from_writers(vec![
+            json_log_file,
+            archive_json_log_file,
+        ])))
         .with_filter(cli_options.file_log_level);
 
     let subscriber = Registry::default()
         .with(stdout_layer)
         .with(log_file_layer)
-        .with(json_log_file_layer)
-        .with(archive_log_file_layer)
-        .with(archive_json_log_file_layer);
+        .with(json_log_file_layer);
     tracing::subscriber::set_global_default(subscriber)?;
 
     let working_dir = std::env::current_dir().wrap_err("failed to retrieve current working directory")?;
@@ -84,4 +76,32 @@ pub fn setup_tracing() -> eyre::Result<()> {
     info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
 
     Ok(())
+}
+
+/// A writer that forwards the data to multiple writers.
+struct MultiWriter<W> {
+    writers: Vec<W>,
+}
+
+impl<W> MultiWriter<W> {
+    pub fn from_writers(writers: Vec<W>) -> Self {
+        Self { writers }
+    }
+}
+
+impl<W: Write> Write for MultiWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut written_bytes = buf.len();
+        for writer in &mut self.writers {
+            written_bytes = min(writer.write(buf)?, written_bytes);
+        }
+        Ok(written_bytes)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        for writer in &mut self.writers {
+            writer.flush()?;
+        }
+        Ok(())
+    }
 }
