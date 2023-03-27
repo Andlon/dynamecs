@@ -339,8 +339,8 @@ pub fn get_default_output_dir() -> &'static Path {
 /// # struct Config {}
 /// # fn initialize_scenario(_config: &Config) -> eyre::Result<dynamecs_app::Scenario> { todo!() }
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let _tracing_guard = dynamecs_app::setup_tracing()?;
 ///     fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
-///         dynamecs_app::setup_tracing()?;
 ///         dynamecs_app::DynamecsApp::configure_from_cli()?
 ///             .with_scenario_initializer(initialize_scenario)?
 ///             .run()?;
@@ -357,8 +357,8 @@ pub fn get_default_output_dir() -> &'static Path {
 macro_rules! dynamecs_main {
     ($scenario:expr) => {
         fn main() -> Result<(), Box<dyn std::error::Error>> {
+            let _tracing_guard = $crate::setup_tracing()?;
             fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
-                $crate::setup_tracing()?;
                 $crate::DynamecsApp::configure_from_cli()?
                     .with_scenario_initializer($scenario)?
                     .run()?;
