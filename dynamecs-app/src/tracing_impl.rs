@@ -73,19 +73,27 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     let archive_dir = log_dir.join("archive");
     let archive_log_file_path = archive_dir.join(format!("dynamecs_app.{timestamp}.log{gz_ext}"));
     let archive_json_log_file_path = archive_dir.join(format!("dynamecs_app.{timestamp}.json{gz_ext}"));
-    create_dir_all(&log_dir).wrap_err("failed to create log directory")?;
-    create_dir_all(&archive_dir).wrap_err("failed to create log archive directory")?;
 
+
+    create_dir_all(&log_dir).wrap_err("failed to create log directory")?;
     let log_file = File::create(&log_file_path).wrap_err("failed to create main log file")?;
     let json_log_file = File::create(&json_log_file_path).wrap_err("failed to create json log file")?;
-    let archive_log_file = File::create(&archive_log_file_path).wrap_err("failed to create archive log file")?;
-    let archive_json_log_file =
-        File::create(&archive_json_log_file_path).wrap_err("failed to create archive json log file")?;
+    let mut log_files = vec![log_file];
+    let mut json_log_files = vec![json_log_file];
+
+    if cli_options.archive_logs {
+        create_dir_all(&archive_dir).wrap_err("failed to create log archive directory")?;
+        let archive_log_file = File::create(&archive_log_file_path).wrap_err("failed to create archive log file")?;
+        let archive_json_log_file =
+            File::create(&archive_json_log_file_path).wrap_err("failed to create archive json log file")?;
+        log_files.push(archive_log_file);
+        json_log_files.push(archive_json_log_file);
+    }
 
     let mut guard = TracingGuard::new();
 
-    let log_files_writer = MultiWriter::from_writers(vec![log_file, archive_log_file]);
-    let json_files_writer = MultiWriter::from_writers(vec![json_log_file, archive_json_log_file]);
+    let log_files_writer = MultiWriter::from_writers(log_files);
+    let json_files_writer = MultiWriter::from_writers(json_log_files);
     if cli_options.compress_logs {
         let log_gzip_writer = GzipLogWriter::new(log_files_writer);
         let log_writer = Arc::new(MutexWriter::new(log_gzip_writer));
@@ -121,8 +129,10 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     info!(target: "dynamecs_app", "Logging text to stdout with log level {}", cli_options.console_log_level.to_string());
     info!(target: "dymamecs_app", "Logging text to file {} with log level {}", log_file_path.display(), cli_options.file_log_level);
     info!(target: "dynamecs_app", "Logging JSON to file {} with log level {}", json_log_file_path.display(), cli_options.file_log_level);
-    info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
-    info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
+    if cli_options.archive_logs {
+        info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
+        info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
+    }
 
     TRACING_GUARD
         .lock()
