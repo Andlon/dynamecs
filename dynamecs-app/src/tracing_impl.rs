@@ -3,19 +3,19 @@ use crate::get_output_dir;
 use chrono::Local;
 use clap::Parser;
 use eyre::WrapErr;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use std::cmp::min;
 use std::fs::{create_dir_all, File};
-use std::io::{ErrorKind, Write};
 use std::io::Error as IoError;
+use std::io::{ErrorKind, Write};
 use std::sync::{Arc, Mutex};
-use flate2::Compression;
-use flate2::write::GzEncoder;
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
+use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, Registry};
-use tracing_subscriber::fmt::MakeWriter;
 
 /// Sets up `tracing`.
 ///
@@ -158,7 +158,7 @@ impl TracingGuard {
             log_file_writer: None,
             gz_log_file_writer: None,
             json_log_file_writer: None,
-            gz_json_log_file_writer: None
+            gz_json_log_file_writer: None,
         }
     }
 }
@@ -206,7 +206,9 @@ impl<W: Write> GzipLogWriter<W> {
 
 impl<W: Write> GzipLogWriter<W> {
     pub fn new(writer: W) -> Self {
-        Self { encoder: Some(GzEncoder::new(writer, Compression::default())) }
+        Self {
+            encoder: Some(GzEncoder::new(writer, Compression::default())),
+        }
     }
 }
 
@@ -251,13 +253,17 @@ impl<W: Write> Write for MutexWriter<W> {
 
 impl<'a, W: Write> Write for &'a MutexWriter<W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut writer = self.0.lock()
+        let mut writer = self
+            .0
+            .lock()
             .map_err(|_| IoError::new(ErrorKind::Other, "failed to lock mutex for writing"))?;
         writer.write(buf)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let mut writer = self.0.lock()
+        let mut writer = self
+            .0
+            .lock()
             .map_err(|_| IoError::new(ErrorKind::Other, "failed to lock mutex for flushing"))?;
         writer.flush()
     }
