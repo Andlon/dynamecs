@@ -10,12 +10,29 @@ use std::fs::{create_dir_all, File};
 use std::io::Error as IoError;
 use std::io::{ErrorKind, Write};
 use std::sync::{Arc, Mutex};
-use tracing::info;
+use tracing::{error, info};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, Registry};
+
+static TRACING_GUARD: Mutex<Option<TracingGuard>> = Mutex::new(None);
+
+/// Registers a signal handler that tries to ensure correct termination of logging
+/// in the presence of sudden program termination.
+pub fn register_signal_handler() -> eyre::Result<()> {
+    ctrlc::set_handler(|| {
+        error!("Received signal to terminate (for example Ctrl+C). Aborting application...");
+        if let Ok(mut opt) = TRACING_GUARD.lock() {
+            if let Some(guard) = opt.as_mut() {
+                guard.finalize();
+            }
+        }
+        std::process::exit(1);
+    })?;
+    Ok(())
+}
 
 /// Sets up `tracing`.
 ///
@@ -103,6 +120,10 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
     info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
 
+    TRACING_GUARD.lock()
+        .expect("Internal error: Poisoned mutex")
+        .replace(guard.clone_private());
+
     Ok(guard)
 }
 
@@ -161,10 +182,9 @@ impl TracingGuard {
             gz_json_log_file_writer: None,
         }
     }
-}
 
-impl Drop for TracingGuard {
-    fn drop(&mut self) {
+    // Called from Drop impl and/or signal handler
+    fn finalize(&mut self) {
         // TODO: Should we write to stdout if any of these things fail, particularly
         // finishing the gzip encoders?
         if let Some(log_file_writer) = &mut self.log_file_writer {
@@ -187,6 +207,21 @@ impl Drop for TracingGuard {
                 let _ = writer.finish();
             }
         }
+    }
+
+    fn clone_private(&self) -> Self {
+        Self {
+            log_file_writer: self.log_file_writer.clone(),
+            gz_log_file_writer: self.gz_log_file_writer.clone(),
+            json_log_file_writer: self.json_log_file_writer.clone(),
+            gz_json_log_file_writer: self.gz_json_log_file_writer.clone(),
+        }
+    }
+}
+
+impl Drop for TracingGuard {
+    fn drop(&mut self) {
+        self.finalize();
     }
 }
 

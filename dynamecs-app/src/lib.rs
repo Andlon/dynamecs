@@ -24,6 +24,7 @@ mod config_override;
 mod tracing_impl;
 
 pub use tracing_impl::setup_tracing;
+pub use tracing_impl::register_signal_handler;
 
 #[derive(Debug)]
 pub struct Scenario {
@@ -314,7 +315,8 @@ pub fn get_default_output_dir() -> &'static Path {
 
 /// Convenience macro for generating an appropriate main function for use with `dynamecs-app`.
 ///
-/// The macro sets up logging through the `tracing` integration, configures a `DynamecsApp`
+/// The macro sets up logging through the `tracing` integration, sets up a signal handler
+/// to ensure clean log termination, configures a `DynamecsApp`
 /// based on CLI arguments and runs the scenario defined by the given scenario initializer.
 ///
 /// For example, consider the following program.
@@ -358,6 +360,7 @@ macro_rules! dynamecs_main {
     ($scenario:expr) => {
         fn main() -> Result<(), Box<dyn std::error::Error>> {
             let _tracing_guard = $crate::setup_tracing()?;
+            $crate::register_signal_handler()?;
             fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
                 $crate::DynamecsApp::configure_from_cli()?
                     .with_scenario_initializer($scenario)?
