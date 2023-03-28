@@ -9,9 +9,10 @@ use std::cmp::min;
 use std::fs::{create_dir_all, File};
 use std::io::Error as IoError;
 use std::io::{ErrorKind, Write};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info};
 use tracing::metadata::LevelFilter;
+use tracing::{error, info};
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::prelude::*;
@@ -23,7 +24,7 @@ static TRACING_GUARD: Mutex<Option<TracingGuard>> = Mutex::new(None);
 /// in the presence of sudden program termination.
 pub fn register_signal_handler() -> eyre::Result<()> {
     ctrlc::set_handler(|| {
-        error!("Received signal to terminate (for example Ctrl+C). Aborting application...");
+        error!(target: "dynamecs_app", "Received signal to terminate (for example Ctrl+C). Aborting application...");
         if let Ok(mut opt) = TRACING_GUARD.lock() {
             if let Some(guard) = opt.as_mut() {
                 guard.finalize();
@@ -60,8 +61,11 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
         false => "",
     };
     let log_dir = get_output_dir().join("logs");
-    let log_file_path = log_dir.join(format!("dynamecs_app.log{gz_ext}"));
-    let json_log_file_path = log_dir.join(format!("dynamecs_app.json{gz_ext}"));
+    let log_file_base_name = "dynamecs_app.log";
+    let json_log_file_base_name = "dynamecs_app.jsonlog";
+    remove_non_archive_log_files(log_dir.as_ref(), log_file_base_name, json_log_file_base_name)?;
+    let log_file_path = log_dir.join(format!("{log_file_base_name}{gz_ext}"));
+    let json_log_file_path = log_dir.join(format!("{json_log_file_base_name}{gz_ext}"));
 
     // Use ISO 8601 / RFC 3339, but replace colons with dots, since colons are
     // not valid in Windows filenames (and awkward on Unix)
@@ -120,11 +124,31 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
     info!(target: "dynamecs_app", "Archived JSON log file path: {}", archive_json_log_file_path.display());
 
-    TRACING_GUARD.lock()
+    TRACING_GUARD
+        .lock()
         .expect("Internal error: Poisoned mutex")
         .replace(guard.clone_private());
 
     Ok(guard)
+}
+
+/// Remove old non-archive log files so that there are no stale logs when toggling log
+/// compression.
+fn remove_non_archive_log_files(
+    directory: &Path,
+    log_base_name: &str,
+    json_log_base_name: &str,
+) -> std::io::Result<()> {
+    let names = [
+        log_base_name.to_string(),
+        json_log_base_name.to_string(),
+        format!("{log_base_name}.gz"),
+        format!("{json_log_base_name}.gz"),
+    ];
+    for name in names {
+        remove_file_if_exists(directory.join(name))?;
+    }
+    Ok(())
 }
 
 fn set_global_tracing_subscriber(
@@ -164,6 +188,16 @@ fn set_global_tracing_subscriber(
         .with(json_log_file_layer);
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
+}
+
+fn remove_file_if_exists(path: impl AsRef<Path>) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Ok(_) => Ok(()),
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => Ok(()),
+            _ => Err(err),
+        },
+    }
 }
 
 pub struct TracingGuard {

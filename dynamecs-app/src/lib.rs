@@ -23,8 +23,8 @@ mod cli;
 mod config_override;
 mod tracing_impl;
 
-pub use tracing_impl::setup_tracing;
 pub use tracing_impl::register_signal_handler;
+pub use tracing_impl::setup_tracing;
 
 #[derive(Debug)]
 pub struct Scenario {
