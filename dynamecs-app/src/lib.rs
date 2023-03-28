@@ -335,26 +335,6 @@ pub fn get_default_output_dir() -> &'static Path {
 ///
 /// dynamecs_main!(initialize_scenario);
 /// ```
-/// For this example, the macro expands to
-/// ```no_run
-/// # #[derive(Debug, serde::Serialize, serde::Deserialize)]
-/// # struct Config {}
-/// # fn initialize_scenario(_config: &Config) -> eyre::Result<dynamecs_app::Scenario> { todo!() }
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let _tracing_guard = dynamecs_app::setup_tracing()?;
-///     fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
-///         dynamecs_app::DynamecsApp::configure_from_cli()?
-///             .with_scenario_initializer(initialize_scenario)?
-///             .run()?;
-///         Ok(())
-///     }
-///
-///     main_internal().map_err(|err| {
-///         tracing::error!("{err:#}");
-///         err
-///     })
-/// }
-/// ```
 #[macro_export]
 macro_rules! dynamecs_main {
     ($scenario:expr) => {
