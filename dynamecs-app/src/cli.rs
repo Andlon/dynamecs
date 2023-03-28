@@ -57,4 +57,6 @@ pub struct CliOptions {
         Multiple overrides are applied in sequence."
     )]
     pub overrides: Vec<String>,
+    #[arg(long = "compress-logs", help = "Compress logs with gzip compression.")]
+    pub compress_logs: bool,
 }
