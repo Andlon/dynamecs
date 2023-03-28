@@ -23,6 +23,7 @@ mod cli;
 mod config_override;
 mod tracing_impl;
 
+pub use tracing_impl::register_signal_handler;
 pub use tracing_impl::setup_tracing;
 
 #[derive(Debug)]
@@ -314,7 +315,8 @@ pub fn get_default_output_dir() -> &'static Path {
 
 /// Convenience macro for generating an appropriate main function for use with `dynamecs-app`.
 ///
-/// The macro sets up logging through the `tracing` integration, configures a `DynamecsApp`
+/// The macro sets up logging through the `tracing` integration, sets up a signal handler
+/// to ensure clean log termination, configures a `DynamecsApp`
 /// based on CLI arguments and runs the scenario defined by the given scenario initializer.
 ///
 /// For example, consider the following program.
@@ -333,32 +335,13 @@ pub fn get_default_output_dir() -> &'static Path {
 ///
 /// dynamecs_main!(initialize_scenario);
 /// ```
-/// For this example, the macro expands to
-/// ```no_run
-/// # #[derive(Debug, serde::Serialize, serde::Deserialize)]
-/// # struct Config {}
-/// # fn initialize_scenario(_config: &Config) -> eyre::Result<dynamecs_app::Scenario> { todo!() }
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
-///         dynamecs_app::setup_tracing()?;
-///         dynamecs_app::DynamecsApp::configure_from_cli()?
-///             .with_scenario_initializer(initialize_scenario)?
-///             .run()?;
-///         Ok(())
-///     }
-///
-///     main_internal().map_err(|err| {
-///         tracing::error!("{err:#}");
-///         err
-///     })
-/// }
-/// ```
 #[macro_export]
 macro_rules! dynamecs_main {
     ($scenario:expr) => {
         fn main() -> Result<(), Box<dyn std::error::Error>> {
+            let _tracing_guard = $crate::setup_tracing()?;
+            $crate::register_signal_handler()?;
             fn main_internal() -> Result<(), Box<dyn std::error::Error>> {
-                $crate::setup_tracing()?;
                 $crate::DynamecsApp::configure_from_cli()?
                     .with_scenario_initializer($scenario)?
                     .run()?;
