@@ -12,6 +12,6 @@ time = { version = "0.3.20", features = ["serde", "parsing"] }
 eyre = "0.6.8"
 
 [dev-dependencies]
-time = { version = "0.3.20", features = ["macros"] }
+insta = "1.29.0"
 
 

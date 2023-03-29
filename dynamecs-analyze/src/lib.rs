@@ -9,6 +9,8 @@ use flate2::read::GzDecoder;
 use serde::{Deserialize};
 use time::OffsetDateTime;
 
+pub mod timing;
+
 #[derive(Debug, Clone)]
 pub struct Span {
     name: String,
@@ -102,22 +104,22 @@ fn iterate_records_(json_log_file_path: &Path) -> eyre::Result<RecordIter> {
         .and_then(OsStr::to_str)
         .ok_or_else(|| eyre!("non-utf filename, cannot proceed"))?;
     if file_name.ends_with(".jsonlog") {
-        iterate_records_from_reader(file)
+        Ok(iterate_records_from_reader(file))
     } else if file_name.ends_with(".jsonlog.gz") {
-        iterate_records_from_reader(GzDecoder::new(file))
+        Ok(iterate_records_from_reader(GzDecoder::new(file)))
     } else {
         Err(eyre!("unexpected extension. Expected .jsonlog or .jsonlog.gz"))
     }
 }
 
-pub fn iterate_records_from_reader<R: Read + 'static>(reader: R) -> eyre::Result<RecordIter> {
+pub fn iterate_records_from_reader<R: Read + 'static>(reader: R) -> RecordIter {
     iterate_records_from_reader_(BufReader::new(Box::new(reader)))
 }
 
-fn iterate_records_from_reader_(reader: BufReader<Box<dyn Read>>) -> eyre::Result<RecordIter> {
-    Ok(RecordIter {
+fn iterate_records_from_reader_(reader: BufReader<Box<dyn Read>>) -> RecordIter {
+    RecordIter {
         lines_iter: reader.lines()
-    })
+    }
 }
 
 impl Iterator for RecordIter {

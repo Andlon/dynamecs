@@ -1,0 +1,28 @@
+---
+source: dynamecs-analyze/tests/unit_tests/mod.rs
+expression: timings
+---
+[
+    SpanTiming {
+        span_name: "run",
+        children: [
+            SpanTiming {
+                span_name: "step",
+                children: [
+                    SpanTiming {
+                        span_name: "other_system_that_logs",
+                        children: [],
+                        self_duration: 652µs,
+                    },
+                    SpanTiming {
+                        span_name: "system_that_logs",
+                        children: [],
+                        self_duration: 814µs,
+                    },
+                ],
+                self_duration: 2.993ms,
+            },
+        ],
+        self_duration: 4.539ms,
+    },
+]
