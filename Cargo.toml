@@ -1,5 +1,5 @@
 [workspace]
-members = [ "dynamecs", "dynamecs-app", "dynamecs-analyze" ]
+members = [ "dynamecs", "dynamecs-app", "dynamecs-analyze", "dynamecs-tool" ]
 
 [profile.dev.package.insta]
 opt-level = 2
