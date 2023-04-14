@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 dynamecs-analyze = { path = "../dynamecs-analyze" }
+tabwriter = "1.2.1"

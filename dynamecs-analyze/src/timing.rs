@@ -12,6 +12,36 @@ pub struct SpanTiming {
     self_duration: StdDuration,
 }
 
+#[derive(Debug, Clone)]
+pub struct SpanTiming2 {
+    span_path: Vec<String>,
+    duration: StdDuration,
+}
+
+impl SpanTiming2 {
+    pub fn name(&self) -> &str {
+        self.span_path.last().map(String::as_str).unwrap_or("")
+    }
+
+    pub fn parent(&self) -> &[String] {
+        let num_ancestors = match self.span_path.len() {
+            0 => 0,
+            path_len => path_len - 1
+        };
+        &self.span_path[..num_ancestors]
+    }
+
+    /// The complete "path" of the span, i.e. parents and the name of the span
+    /// in a single list, like `[parent1, parent2, ..., name]`.
+    pub fn span_path(&self) -> &[String] {
+        &self.span_path
+    }
+
+    pub fn duration(&self) -> StdDuration {
+        self.duration
+    }
+}
+
 impl SpanTiming {
     pub fn name(&self) -> &str {
         &self.span_name
@@ -34,29 +64,36 @@ impl SpanTiming {
     }
 }
 
-pub fn accumulate_timings(records: impl IntoIterator<Item=Record>) -> eyre::Result<Vec<SpanTiming>> {
+pub fn accumulate_timings<'record>(records: impl IntoIterator<Item=&'record Record>) -> eyre::Result<Vec<SpanTiming2>> {
     accumulate_timings_(records.into_iter())
 }
 
-fn accumulate_timings_(records: impl Iterator<Item=Record>) -> eyre::Result<Vec<SpanTiming>> {
+fn accumulate_timings_<'record>(records: impl Iterator<Item=&'record Record>) -> eyre::Result<Vec<SpanTiming2>> {
     let mut span_timer = SpanTimer::default();
     for record in records {
         if [RecordKind::SpanEnter, RecordKind::SpanExit].contains(&record.kind()) {
-            let mut span_names = record.spans().iter().map(|span| span.name().to_string()).collect();
+            let mut span_names = record.spans()
+                .into_iter()
+                .flatten()
+                .map(|span| span.name().to_string())
+                .collect();
             match record.kind {
                 RecordKind::SpanEnter => span_timer.enter_span(span_names, *record.timestamp())?,
                 RecordKind::SpanExit => {
                     // Exit records do not record their own span in their list of spans,
                     // so we must add this to the span list in order to match up with
                     // the enter record
-                    span_names.push(record.span().name().to_string());
+                    let span_name = record.span()
+                        .map(|span| span.name())
+                        .unwrap_or("");
+                    span_names.push(span_name.to_string());
                     span_timer.exit_span(span_names, *record.timestamp())?
                 },
                 RecordKind::Event => {}
             }
         }
     }
-    Ok(span_timer.collect_accumulated_timings())
+    Ok(span_timer.collect_accumulated_timings2())
 }
 
 #[derive(Default, Debug)]
@@ -114,6 +151,21 @@ impl SpanTimer {
             }
         }
 
+        timings
+    }
+
+    fn collect_accumulated_timings2(self) -> Vec<SpanTiming2> {
+        let mut timings: Vec<_> = self.accumulated_span_timings
+            .into_iter()
+            .map(|(span_strings, duration)| {
+                SpanTiming2 {
+                    span_path: span_strings,
+                    duration
+                }
+            }).collect();
+        // Ensure that parents always come before children
+        timings.sort_by(|timing1, timing2| ((timing1.parent(), timing1.name()))
+            .cmp(&(timing2.parent(), timing2.name())));
         timings
     }
 }

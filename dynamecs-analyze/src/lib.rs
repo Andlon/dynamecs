@@ -52,9 +52,9 @@ pub enum RecordKind {
 #[derive(Debug, Clone)]
 pub struct Record {
     target: String,
-    span: Span,
+    span: Option<Span>,
     level: Level,
-    spans: Vec<Span>,
+    spans: Option<Vec<Span>>,
     kind: RecordKind,
     message: String,
     timestamp: OffsetDateTime,
@@ -65,12 +65,12 @@ impl Record {
         self.level
     }
 
-    pub fn span(&self) -> &Span {
-        &self.span
+    pub fn span(&self) -> Option<&Span> {
+        self.span.as_ref()
     }
 
-    pub fn spans(&self) -> &[Span] {
-        &self.spans
+    pub fn spans(&self) -> Option<&[Span]> {
+        self.spans.as_ref().map(Vec::as_ref)
     }
 
     pub fn target(&self) -> &str {
@@ -152,8 +152,8 @@ struct RawRecord {
     level: String,
     fields: serde_json::Value,
     target: String,
-    span: serde_json::Value,
-    spans: Vec<serde_json::Value>,
+    span: Option<serde_json::Value>,
+    spans: Option<Vec<serde_json::Value>>,
 }
 
 impl RawRecord {
@@ -164,9 +164,10 @@ impl RawRecord {
 
         Ok(Record {
             target: self.target,
-            span: Span::try_from_json_value(self.span)?,
+            span: self.span.map(|json_val| Span::try_from_json_value(json_val)).transpose()?,
             level: Level::from_str(&self.level)?,
-            spans: self.spans.into_iter().map(Span::try_from_json_value).collect::<eyre::Result<_>>()?,
+            spans: self.spans.map(|json_vals| json_vals.into_iter().map(Span::try_from_json_value).collect::<eyre::Result<_>>())
+                .transpose()?,
             kind: match message {
                 string if string == "enter" => RecordKind::SpanEnter,
                 string if string == "exit" => RecordKind::SpanExit,

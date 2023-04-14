@@ -25,36 +25,36 @@ fn test_basic_records_iteration() {
         assert_eq!(record.kind(), RecordKind::SpanEnter);
         assert_eq!(record.message(), "enter");
         assert_eq!(record.timestamp(), &OffsetDateTime::parse("2023-03-29T12:48:50.213348Z", &Iso8601::DEFAULT).unwrap());
-        assert_eq!(record.span().name(), "Backward Euler IP assemble");
-        assert_eq!(record.span().fields(), &json! {{
+        assert_eq!(record.span().unwrap().name(), "Backward Euler IP assemble");
+        assert_eq!(record.span().unwrap().fields(), &json! {{
             "name": "Backward Euler IP assemble",
         }});
-        assert_eq!(record.spans().len(), 6);
-        assert_eq!(record.spans()[0].name(), "run");
-        assert_eq!(record.spans()[0].fields(), &json! {{
+        assert_eq!(record.spans().unwrap().len(), 6);
+        assert_eq!(record.spans().unwrap()[0].name(), "run");
+        assert_eq!(record.spans().unwrap()[0].fields(), &json! {{
             "name": "run"
         }});
-        assert_eq!(record.spans()[1].name(), "step");
-        assert_eq!(record.spans()[1].fields(), &json! {{
+        assert_eq!(record.spans().unwrap()[1].name(), "step");
+        assert_eq!(record.spans().unwrap()[1].fields(), &json! {{
             "name": "step",
             "step_index": 16
         }});
-        assert_eq!(record.spans()[2].name(), "Backward Euler");
-        assert_eq!(record.spans()[2].fields(), &json! {{
+        assert_eq!(record.spans().unwrap()[2].name(), "Backward Euler");
+        assert_eq!(record.spans().unwrap()[2].fields(), &json! {{
             "name": "Backward Euler"
         }});
-        assert_eq!(record.spans()[3].name(), "Backward Euler");
-        assert_eq!(record.spans()[3].fields(), &json! {{
+        assert_eq!(record.spans().unwrap()[3].name(), "Backward Euler");
+        assert_eq!(record.spans().unwrap()[3].fields(), &json! {{
             "name": "Backward Euler"
         }});
-        assert_eq!(record.spans()[4].name(), "Newton iteration");
-        assert_eq!(record.spans()[4].fields(), &json! {{
+        assert_eq!(record.spans().unwrap()[4].name(), "Newton iteration");
+        assert_eq!(record.spans().unwrap()[4].fields(), &json! {{
             "name": "Newton iteration",
             "hessian_mod": "NoModification",
             "k": 8,
         }});
-        assert_eq!(record.spans()[5].name(), "Backward Euler IP assemble");
-        assert_eq!(record.spans()[5].fields(), &json! {{
+        assert_eq!(record.spans().unwrap()[5].name(), "Backward Euler IP assemble");
+        assert_eq!(record.spans().unwrap()[5].fields(), &json! {{
             "name": "Backward Euler IP assemble",
         }});
     }
@@ -66,11 +66,11 @@ fn test_basic_records_iteration() {
         assert_eq!(record.kind(), RecordKind::SpanExit);
         assert_eq!(record.message(), "exit");
         assert_eq!(record.timestamp(), &OffsetDateTime::parse("2023-03-29T12:48:51.440914Z", &Iso8601::DEFAULT).unwrap());
-        assert_eq!(record.span().name(), "hessian");
-        assert_eq!(record.span().fields(), &json! {{
+        assert_eq!(record.span().unwrap().name(), "hessian");
+        assert_eq!(record.span().unwrap().fields(), &json! {{
             "name": "hessian",
         }});
-        assert_eq!(record.spans().len(), 6);
+        assert_eq!(record.spans().unwrap().len(), 6);
 
         // TODO: Test the rest
     }
@@ -106,6 +106,6 @@ fn test_basic_timing_collection() {
     let records: Vec<_> = iterate_records_from_reader(log_data.as_bytes())
         .collect::<eyre::Result<_>>()
         .unwrap();
-    let timings = accumulate_timings(records).unwrap();
+    let timings = accumulate_timings(&records).unwrap();
     insta::assert_debug_snapshot!(timings);
 }
