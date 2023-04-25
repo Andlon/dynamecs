@@ -184,7 +184,7 @@ impl RawRecord {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
     Error,
-    Warning,
+    Warn,
     Info,
     Debug,
     Trace
@@ -208,8 +208,8 @@ impl FromStr for Level {
         let trimmed = s.trim();
         if trimmed.eq_ignore_ascii_case("ERROR") {
             Ok(Self::Error)
-        } else if trimmed.eq_ignore_ascii_case("WARNING") {
-            Ok(Self::Warning)
+        } else if trimmed.eq_ignore_ascii_case("WARN") {
+            Ok(Self::Warn)
         } else if trimmed.eq_ignore_ascii_case("INFO") {
             Ok(Self::Info)
         } else if trimmed.eq_ignore_ascii_case("DEBUG") {
