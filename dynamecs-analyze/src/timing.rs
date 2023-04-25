@@ -135,7 +135,8 @@ impl SpanTimer {
         let mut entries: Vec<_> = self.accumulated_span_timings.into_iter()
             .collect();
         // By sorting the entries, we always obtain parents before child entries
-        entries.sort();
+        // (note: Important that we use a stable sort!)
+        entries.sort_by(|entry1, entry2| parent_strings_from_path(&entry1.0).cmp(&parent_strings_from_path(&entry2.0)));
         let mut timings = Vec::new();
 
         for (span_strings, duration) in entries {
@@ -164,10 +165,15 @@ impl SpanTimer {
                 }
             }).collect();
         // Ensure that parents always come before children
-        timings.sort_by(|timing1, timing2| ((timing1.parent(), timing1.name()))
-            .cmp(&(timing2.parent(), timing2.name())));
+        // (note: it's important that we use a stable sort because we want to preserve the correct order between siblings)
+        timings.sort_by(|timing1, timing2| timing1.parent().cmp(timing2.parent()));
         timings
     }
+}
+
+fn parent_strings_from_path(path: &[String]) -> &[String] {
+    let num_ancestors = path.len().saturating_sub(1);
+    &path[0 .. num_ancestors]
 }
 
 fn insert_in_parent(
