@@ -74,7 +74,6 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     let archive_log_file_path = archive_dir.join(format!("dynamecs_app.{timestamp}.log{gz_ext}"));
     let archive_json_log_file_path = archive_dir.join(format!("dynamecs_app.{timestamp}.json{gz_ext}"));
 
-
     create_dir_all(&log_dir).wrap_err("failed to create log directory")?;
     let log_file = File::create(&log_file_path).wrap_err("failed to create main log file")?;
     let json_log_file = File::create(&json_log_file_path).wrap_err("failed to create json log file")?;

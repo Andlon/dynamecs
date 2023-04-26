@@ -240,13 +240,15 @@ impl DynamecsApp<()> {
                 r#"No configuration specified. Trying to use the empty document {} as default."#,
                 default_config_str
             );
-            Ok(json5::from_str("{}").wrap_err("failed to deserialize configuration from empty document {}. \
+            Ok(json5::from_str("{}").wrap_err(
+                "failed to deserialize configuration from empty document {}. \
             You need to either provide all required configuration parameters, \
-            or make sure that your configuration can be deserialized from an empty document,")?)
+            or make sure that your configuration can be deserialized from an empty document,",
+            )?)
         }?;
 
-        let mut config_json = serde_json::to_value(initial_config)
-            .wrap_err("failed to serialize initial config as JSON")?;
+        let mut config_json =
+            serde_json::to_value(initial_config).wrap_err("failed to serialize initial config as JSON")?;
 
         if !opt.overrides.is_empty() {
             let overridden_config: serde_json::Value =

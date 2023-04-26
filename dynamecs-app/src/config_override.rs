@@ -223,12 +223,14 @@ mod tests {
         });
         apply_config_override(&mut json, "settings.stiffness=10").unwrap();
 
-        assert_eq!(json, json!({
-            "settings": {
-                "stiffness": 10,
-                "friction": 1.0,
-            }
-        }))
-
+        assert_eq!(
+            json,
+            json!({
+                "settings": {
+                    "stiffness": 10,
+                    "friction": 1.0,
+                }
+            })
+        )
     }
 }
