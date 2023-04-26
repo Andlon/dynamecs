@@ -212,4 +212,23 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn apply_config_override_object_override() {
+        let mut json = json!({
+            "settings": {
+                "stiffness": 1.0,
+                "friction": 1.0,
+            }
+        });
+        apply_config_override(&mut json, "settings.stiffness=10").unwrap();
+
+        assert_eq!(json, json!({
+            "settings": {
+                "stiffness": 10,
+                "friction": 1.0,
+            }
+        }))
+
+    }
 }
