@@ -11,6 +11,9 @@ use time::OffsetDateTime;
 
 pub mod timing;
 
+mod span_path;
+pub use span_path::{SpanPath};
+
 #[derive(Debug, Clone)]
 pub struct Span {
     name: String,
@@ -87,6 +90,17 @@ impl Record {
 
     pub fn timestamp(&self) -> &OffsetDateTime {
         &self.timestamp
+    }
+
+    pub fn span_path(&self) -> Option<SpanPath> {
+        self.spans
+            .as_ref()
+            .map(|spans| {
+                let span_names = spans.iter()
+                    .map(|span| span.name().to_string())
+                    .collect();
+                SpanPath::new(span_names)
+            })
     }
 }
 

@@ -4,6 +4,8 @@ use time::OffsetDateTime;
 use dynamecs_analyze::{iterate_records_from_reader, Level, Record, RecordKind};
 use dynamecs_analyze::timing::accumulate_timings;
 
+mod span_path;
+
 #[test]
 fn test_basic_records_iteration() {
     let log_data = r###"
