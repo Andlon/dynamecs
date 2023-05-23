@@ -6,13 +6,16 @@ use std::path::Path;
 use std::str::FromStr;
 use eyre::{ErrReport, eyre};
 use flate2::read::GzDecoder;
-use serde::{Deserialize};
+use serde::Deserialize;
 use time::OffsetDateTime;
 
 pub mod timing;
 
 mod span_path;
 pub use span_path::{SpanPath};
+
+mod span_tree;
+pub use span_tree::{SpanTree, SpanTreeNode};
 
 #[derive(Debug, Clone)]
 pub struct Span {
