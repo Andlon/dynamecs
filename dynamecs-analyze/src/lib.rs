@@ -92,15 +92,13 @@ impl Record {
         &self.timestamp
     }
 
-    pub fn span_path(&self) -> Option<SpanPath> {
-        self.spans
-            .as_ref()
-            .map(|spans| {
-                let span_names = spans.iter()
-                    .map(|span| span.name().to_string())
-                    .collect();
-                SpanPath::new(span_names)
-            })
+    pub fn span_path(&self) -> SpanPath {
+        let span_names = self.spans
+            .iter()
+            .flatten()
+            .map(|span| span.name.clone())
+            .collect();
+        SpanPath::new(span_names)
     }
 }
 
