@@ -1,38 +1,62 @@
+use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
+use std::rc::Rc;
 use crate::SpanPath;
 
+pub struct SpanTreeNode2<Payload> {
+    payload: Payload,
+    children: Vec<Rc<RefCell<SpanTreeNode2<Payload>>>>,
+    parent: Option<Rc<RefCell<SpanTreeNode2<Payload>>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpanTree<Payload> {
-    // Sorted lexicographically according to path
+    // Stored in depth-first order
     tree_depth_first: Vec<SpanPath>,
     payloads: Vec<Payload>,
     // TODO: Precompute children indices so that we can just skip directly to
     // relevant indices
 }
 
-pub struct InvalidTreeLayout;
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum InvalidTreeLayout {
+    Empty,
+    NotDepthFirst,
+    NotTree,
+}
 
 impl<Payload> SpanTree<Payload> {
-    pub fn root(&self) -> Option<SpanTreeNode<Payload>> {
+    pub fn root(&self) -> SpanTreeNode<Payload> {
         // TODO: Ensure that the first entry is always the root in the tree
-        assert_eq!(self.tree_depth_first.len(), self.payloads.len());
-        if !self.tree_depth_first.is_empty() {
-            Some(SpanTreeNode {
-                tree_depth_first: &self.tree_depth_first,
-                payloads: &self.payloads,
-                index: 0,
-            })
-        } else {
-            None
+        debug_assert_eq!(self.tree_depth_first.len(), self.payloads.len());
+        assert!(self.tree_depth_first.len() > 0);
+        SpanTreeNode {
+            tree_depth_first: &self.tree_depth_first,
+            payloads: &self.payloads,
+            index: 0,
         }
     }
 
     pub fn try_from_depth_first(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Result<Self, InvalidTreeLayout> {
-        for pair in paths.windows(2) {
-            let [path1, path2]: &[SpanPath; 2] = pair.try_into().unwrap();
-            if !(path1.span_names() < path2.span_names()) {
-                return Err(InvalidTreeLayout)
+        assert_eq!(paths.len(), payloads.len());
+
+        let (root, other_paths) = paths.split_first().ok_or_else(|| InvalidTreeLayout::Empty)?;
+        for path in other_paths {
+            if !root.is_ancestor_of(path) {
+                return Err(InvalidTreeLayout::NotTree);
             }
         }
+
+
+
+
+
+        // for pair in paths.windows(2) {
+        //     let [path1, path2]: &[SpanPath; 2] = pair.try_into().unwrap();
+        //     if path1.
+        //         return Err(InvalidTreeLayout::NotDepthFirst)
+        //     }
+        // }
         Ok(Self { tree_depth_first: paths, payloads })
     }
 

@@ -4,7 +4,15 @@ use time::OffsetDateTime;
 use dynamecs_analyze::{iterate_records_from_reader, Level, Record, RecordKind};
 use dynamecs_analyze::timing::accumulate_timings;
 
+/// Helper macro for succinctly creating a span path from a list of literals.
+macro_rules! span_path {
+    ($($strings:expr),*) => {
+        SpanPath::new(vec![$($strings.to_string()),*])
+    }
+}
+
 mod span_path;
+mod span_tree;
 
 #[test]
 fn test_basic_records_iteration() {

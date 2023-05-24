@@ -10,12 +10,13 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 pub mod timing;
+pub mod timing2;
 
 mod span_path;
 pub use span_path::{SpanPath};
 
 mod span_tree;
-pub use span_tree::{SpanTree, SpanTreeNode};
+pub use span_tree::{SpanTree, SpanTreeNode, InvalidTreeLayout};
 
 #[derive(Debug, Clone)]
 pub struct Span {

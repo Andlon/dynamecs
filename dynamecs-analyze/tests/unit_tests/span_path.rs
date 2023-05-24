@@ -1,10 +1,5 @@
 use dynamecs_analyze::SpanPath;
-
-macro_rules! span_path {
-    ($($strings:expr),*) => {
-        SpanPath::new(vec![$($strings.to_string()),*])
-    }
-}
+use super::span_path;
 
 #[test]
 fn is_parent_of() {
