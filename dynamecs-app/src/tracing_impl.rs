@@ -188,7 +188,7 @@ fn set_global_tracing_subscriber(
     let json_log_file_layer = fmt::Layer::default()
         .json()
         .with_thread_ids(true)
-        .with_span_events(FmtSpan::ACTIVE)
+        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .with_writer(json_log_writer)
         .with_filter(file_log_level);
 

@@ -51,8 +51,11 @@ impl Span {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecordKind {
+    // TODO: Remove Enter/Exit, since we only want to use create/close
     SpanEnter,
     SpanExit,
+    SpanNew,
+    SpanClose,
     Event,
 }
 
@@ -65,6 +68,7 @@ pub struct Record {
     kind: RecordKind,
     message: String,
     timestamp: OffsetDateTime,
+    thread_id: String,
 }
 
 impl Record {
@@ -103,6 +107,9 @@ impl Record {
             .map(|span| span.name.clone())
             .collect();
         SpanPath::new(span_names)
+    }
+    pub fn thread_id(&self) -> &str {
+        &self.thread_id
     }
 }
 
@@ -170,6 +177,8 @@ struct RawRecord {
     target: String,
     span: Option<serde_json::Value>,
     spans: Option<Vec<serde_json::Value>>,
+    #[serde(rename="threadId")]
+    thread_id: String,
 }
 
 impl RawRecord {
@@ -185,12 +194,15 @@ impl RawRecord {
             spans: self.spans.map(|json_vals| json_vals.into_iter().map(Span::try_from_json_value).collect::<eyre::Result<_>>())
                 .transpose()?,
             kind: match message {
+                string if string == "new" => RecordKind::SpanNew,
+                string if string == "close" => RecordKind::SpanClose,
                 string if string == "enter" => RecordKind::SpanEnter,
                 string if string == "exit" => RecordKind::SpanExit,
                 _ => RecordKind::Event
             },
             message: message.to_string(),
             timestamp: self.timestamp,
+            thread_id: self.thread_id,
         })
     }
 }

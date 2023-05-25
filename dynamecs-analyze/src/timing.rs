@@ -90,6 +90,7 @@ fn accumulate_timings_<'record>(records: impl Iterator<Item=&'record Record>) ->
                     span_timer.exit_span(span_names, *record.timestamp())?
                 },
                 RecordKind::Event => {}
+                _ => {}
             }
         }
     }

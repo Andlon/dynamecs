@@ -19,8 +19,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .collect();
         let payloads = vec![(); paths.len()];
         let tree = SpanTree::from_paths_and_payloads(paths, payloads);
-        let root = tree.root().unwrap();
-        recursively_print(&root, 0);
+        // let root = tree.root().unwrap();
+        // recursively_print(&root, 0);
 
         Ok(())
     } else {
