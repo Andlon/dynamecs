@@ -13,6 +13,7 @@ macro_rules! span_path {
 
 mod span_path;
 mod span_tree;
+mod timing;
 
 #[test]
 fn test_basic_records_iteration() {

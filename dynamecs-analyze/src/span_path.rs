@@ -55,6 +55,10 @@ impl SpanPath {
                 SpanPath::new(self.span_names()[..n_common].to_vec())
             })
     }
+
+    pub fn push_span_name(&mut self, span_name: String) {
+        self.span_names.push(span_name);
+    }
 }
 
 impl Display for SpanPath {
