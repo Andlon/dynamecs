@@ -51,11 +51,10 @@ impl Span {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecordKind {
-    // TODO: Remove Enter/Exit, since we only want to use create/close
     SpanEnter,
     SpanExit,
-    SpanNew,
-    SpanClose,
+    // SpanNew,
+    // SpanClose,
     Event,
 }
 
@@ -194,8 +193,8 @@ impl RawRecord {
             spans: self.spans.map(|json_vals| json_vals.into_iter().map(Span::try_from_json_value).collect::<eyre::Result<_>>())
                 .transpose()?,
             kind: match message {
-                string if string == "new" => RecordKind::SpanNew,
-                string if string == "close" => RecordKind::SpanClose,
+                // string if string == "new" => RecordKind::SpanNew,
+                // string if string == "close" => RecordKind::SpanClose,
                 string if string == "enter" => RecordKind::SpanEnter,
                 string if string == "exit" => RecordKind::SpanExit,
                 _ => RecordKind::Event

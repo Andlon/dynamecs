@@ -3,12 +3,6 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use crate::SpanPath;
 
-pub struct SpanTreeNode2<Payload> {
-    payload: Payload,
-    children: Vec<Rc<RefCell<SpanTreeNode2<Payload>>>>,
-    parent: Option<Rc<RefCell<SpanTreeNode2<Payload>>>>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpanTree<Payload> {
     // Stored in depth-first order
@@ -145,7 +139,7 @@ impl<'a, Payload> SpanTreeNode<'a, Payload> {
             .enumerate()
             // Start at the first potential child
             .skip(self.index + 1)
-            .take_while(move |(_, maybe_child)| self_path1.is_parent_of(maybe_child))
+            .take_while(move |(_, maybe_child)| self_path1.is_ancestor_of(maybe_child))
             .filter(move |(_, descendant)| self_path2.is_parent_of(descendant))
             .map(move |(child_index, _)| SpanTreeNode {
                 tree_depth_first,

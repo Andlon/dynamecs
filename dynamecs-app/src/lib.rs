@@ -145,8 +145,6 @@ impl<Config> DynamecsApp<Config> {
                 let StepIndex(step_index) = get_step_index(&*state);
                 let TimeStep(dt) = get_time_step_or_set_default(state);
 
-                let _span = info_span!("step", step_index).entered();
-
                 if let Some(max_steps) = self.max_steps {
                     if step_index > max_steps {
                         break;
@@ -156,6 +154,11 @@ impl<Config> DynamecsApp<Config> {
                         break;
                     }
                 }
+
+                // Note: We enter the step span *after* checking if we should abort the loop,
+                // so that we don't get an additional step span in the logs
+                let _span = info_span!("step", step_index).entered();
+
 
                 if step_index == 0 {
                     // Post systems must run on the initial state in order to do post-initialization

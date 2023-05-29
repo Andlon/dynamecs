@@ -31,6 +31,20 @@ impl System for OtherSystemThatLogs {
     fn run(&mut self, _data: &mut Universe) -> eyre::Result<()> {
         let _span = debug_span!("other_system_that_logs", something = "other test").entered();
         debug!(digits = 17, "some other debug info");
+        {
+            let _span = debug_span!("subspan1").entered();
+        }
+        {
+            let _span = debug_span!("subspan2").entered();
+            {
+                {
+                    let _span2 = debug_span!("assembly").entered();
+                }
+                {
+                    let _span3 = debug_span!("solve").entered();
+                }
+            }
+        }
         Ok(())
     }
 }

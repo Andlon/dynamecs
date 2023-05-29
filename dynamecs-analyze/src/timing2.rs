@@ -3,61 +3,67 @@ use std::iter::Peekable;
 use std::time::Duration;
 use eyre::eyre;
 use time::OffsetDateTime;
-use crate::{Record, RecordKind, Span, SpanPath, SpanTree};
-use crate::RecordKind::{SpanClose, SpanNew};
-
-// pub struct TimingTreeNode {
-//     span: Span,
-//     duration: Duration,
-//     children: Vec<TimingTreeNode>,
-// }
-//
-// pub struct StepTimings {
-//     steps_trees: Vec<BTreeMap<String, TimingTreeNode>>,
-//     step_index: usize,
-// }
-//
-// pub struct StepTimingsCollection {
-//     per_thread_timings: BTreeMap<String, TimingTreeNode>,
-//     steps: Vec<TimingTreeNode>,
-// }
-
-// struct StepTimingAccumulator {
-//     // a stack of span names coupled with timestamp of its *new* event
-//     stack: Vec<(String, OffsetDateTime)>,
-// }
-//
-// impl StepTimingAccumulator {
-//     pub fn new() -> Self {
-//         Self { stack: Vec::new() }
-//     }
-//
-//     pub fn new_span(&mut self, span: &Span, new_timestamp: &OffsetDateTime) {
-//         self.stack.push((span.name.clone(), *new_timestamp));
-//     }
-//
-//     pub fn close_span(&mut self, span: &Span, close_timestamp: &OffsetDateTime) -> eyre::Result<()> {
-//         // TODO: Proper errors
-//         let (popped_span, new_timestamp) = self.stack.pop().ok_or_else(|| eyre!("tried to close span that was not opened"))?;
-//         if span.name() != popped_span {
-//             return Err(eyre!("unexpected span closed"));
-//         }
-//         let duration = *close_timestamp - new_timestamp;
-//
-//         Ok(())
-//     }
-// }
-
-// pub struct StepTimings {
-//     steps: Vec<()>,
-//
-// }
+use RecordKind::{SpanEnter, SpanExit};
+use crate::{Record, RecordKind, Span, SpanPath, SpanTree, SpanTreeNode};
+use std::fmt::Write;
 
 pub type TimingTree = SpanTree<Duration>;
+type TimingTreeNode<'a> = SpanTreeNode<'a, Duration>;
+
+pub fn format_timing_tree(tree: &TimingTree) -> String {
+    let mut result = String::new();
+    write_timing_tree_node(&mut result, tree.root(), &mut vec![]);
+    result
+}
+
+fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stack: &mut Vec<bool>) {
+    // TODO: Not true anymore?
+    // Based on this Stackoverflow post: https://stackoverflow.com/a/8948691
+
+    if let Some((&parent_is_active, predecessors)) = active_stack.split_last() {
+        for &is_active in predecessors {
+            if is_active {
+                output.push_str("│   ");
+            } else {
+                output.push_str("    ");
+            }
+        }
+        if parent_is_active {
+            output.push_str("├── ");
+        } else {
+            output.push_str("└── ");
+        }
+    }
+
+    writeln!(output, "{}", node.path().span_name().unwrap_or("no name? Fix, TODO")).unwrap();
+    let num_children = node.count_children();
+    for (child_idx, child) in node.visit_children().enumerate() {
+        let is_last_child = child_idx + 1 == num_children;
+        active_stack.push(!is_last_child);
+        write_timing_tree_node(output, child, &mut *active_stack);
+        active_stack.pop();
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct AccumulatedTimings {
     span_durations: HashMap<SpanPath, Duration>,
+}
+
+impl AccumulatedTimings {
+    pub fn new() -> Self {
+        Self { span_durations: Default::default() }
+    }
+
+    pub fn merge_with_others(&mut self, others: &[AccumulatedTimings]) {
+        for other in others {
+            for (path, duration) in &other.span_durations {
+                let mut current_duration = self.span_durations.entry(path.clone())
+                    .or_default();
+                *current_duration += *duration;
+            }
+        }
+    }
 }
 
 impl AccumulatedTimings {
@@ -77,6 +83,14 @@ pub struct AccumulatedTimingSeries {
 }
 
 impl AccumulatedTimingSeries {
+    pub fn summarize(&self) -> AccumulatedTimings {
+        let mut summary = AccumulatedTimings::new();
+        summary.merge_with_others(self.steps());
+        summary
+    }
+}
+
+impl AccumulatedTimingSeries {
     pub fn steps(&self) -> &[AccumulatedTimings] {
         &self.steps
     }
@@ -87,13 +101,17 @@ pub fn extract_step_timings<'a>(records: impl IntoIterator<Item=&'a Record>) -> 
     find_and_visit_dynamecs_run_span(records.into_iter())
 }
 
+pub fn extract_timing_summary<'a>(records: impl IntoIterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimings> {
+    extract_step_timings(records).map(|series| series.summarize())
+}
+
 fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimingSeries> {
     // First try to find the `run` span in the records
     while let Some(record) = records.next() {
         if let Some(span) = record.span() {
             if span.name() == "run"
                 && record.target() == "dynamecs_app"
-                && record.kind() == RecordKind::SpanNew {
+                && record.kind() == RecordKind::SpanEnter {
                 return visit_dynamecs_run_span(record, records);
             }
         }
@@ -113,13 +131,13 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
         if record.thread_id() == run_thread {
             if let Some(span) = record.span() {
                 match (span.name(), record.target(), record.kind()) {
-                    ("step", "dynamecs_app", SpanNew) => {
+                    ("step", "dynamecs_app", SpanEnter) => {
                         if let Some(step) = visit_dynamecs_step_span(record, &mut iter)? {
                             // Only collect complete time steps
                             steps.push(step);
                         }
                     },
-                    ("run", "dynamecs_app", SpanClose) if record.span_path() == run_span_path => {
+                    ("run", "dynamecs_app", SpanExit) if record.span_path() == run_span_path => {
                         break;
                     },
                     // TODO: Still accumulate timings for other things?
@@ -142,15 +160,17 @@ fn visit_dynamecs_step_span<'a>(
     let step_path = step_new_record.span_path();
 
     let mut accumulator = TimingAccumulator::new();
-    accumulator.new_span(step_path.clone(), step_new_record.timestamp().clone())?;
+    accumulator.enter_span(step_path.clone(), step_new_record.timestamp().clone())?;
 
     while let Some(record) = remaining_records.next() {
         if record.thread_id() == step_new_record.thread_id() {
             if let Some(span) = record.span() {
                 match record.kind() {
-                    SpanNew => accumulator.new_span(record.span_path(),
-                                                    record.timestamp().clone())?,
-                    SpanClose => {
+                    SpanEnter => {
+                        accumulator.enter_span(record.span_path(),
+                                               record.timestamp().clone())?;
+                    },
+                    SpanExit => {
                         // TODO: use a stack to verify that open/close events are consistent?
                         let mut span_path = record.span_path();
                         // Close events don't report the current span anymore,
@@ -158,14 +178,34 @@ fn visit_dynamecs_step_span<'a>(
                         // "new" event
                         span_path.push_span_name(span.name().to_string());
                         let is_step_span_path = span_path == step_path;
-                        accumulator.close_span(span_path,
-                                               record.timestamp().clone())?;
+                        accumulator.exit_span(span_path,
+                                              record.timestamp().clone())?;
                         if span.name() == "step"
                             && record.target() == "dynamecs_app"
                             && is_step_span_path {
                             break;
                         }
-                    },
+                    }
+                    // SpanNew => {
+                    //     // Looks like new events also don't carry the
+                    //     let mut span_path = record.span_path();
+                    // },
+                    // SpanClose => {
+                    //     // TODO: use a stack to verify that open/close events are consistent?
+                    //     let mut span_path = record.span_path();
+                    //     // Close events don't report the current span anymore,
+                    //     // so we need to add this to get a path consistent with the
+                    //     // "new" event
+                    //     span_path.push_span_name(span.name().to_string());
+                    //     let is_step_span_path = span_path == step_path;
+                    //     accumulator.close_span(span_path,
+                    //                            record.timestamp().clone())?;
+                    //     if span.name() == "step"
+                    //         && record.target() == "dynamecs_app"
+                    //         && is_step_span_path {
+                    //         break;
+                    //     }
+                    // },
                     _ => {}
                 }
             }
@@ -185,27 +225,25 @@ fn visit_dynamecs_step_span<'a>(
 #[derive(Debug)]
 struct TimingAccumulator {
     completed_durations: HashMap<SpanPath, Duration>,
-    timestamps_open: HashMap<SpanPath, OffsetDateTime>,
+    enter_timestamps: HashMap<SpanPath, OffsetDateTime>,
 }
 
 impl TimingAccumulator {
     pub fn new() -> Self {
-        Self { completed_durations: Default::default(), timestamps_open: Default::default() }
+        Self { completed_durations: Default::default(), enter_timestamps: Default::default() }
     }
 
-    pub fn new_span(&mut self, path: SpanPath, timestamp: OffsetDateTime) -> eyre::Result<()> {
-        dbg!("new", &path);
-        if self.timestamps_open.insert(path, timestamp).is_some() {
+    pub fn enter_span(&mut self, path: SpanPath, timestamp: OffsetDateTime) -> eyre::Result<()> {
+        if self.enter_timestamps.insert(path, timestamp).is_some() {
             return Err(eyre!("tried to create new span that is already active (not closed)"));
         }
         Ok(())
     }
 
-    pub fn close_span(&mut self, path: SpanPath, timestamp_close: OffsetDateTime) -> eyre::Result<()> {
-        dbg!("close", &path);
-        let timestamp_new = self.timestamps_open.remove(&path)
+    pub fn exit_span(&mut self, path: SpanPath, timestamp_close: OffsetDateTime) -> eyre::Result<()> {
+        let timestamp_enter = self.enter_timestamps.remove(&path)
             .ok_or_else(|| eyre!("found close event for span that is not currently active. Span path: {path}"))?;
-        let span_duration: Duration = (timestamp_close - timestamp_new).unsigned_abs();
+        let span_duration: Duration = (timestamp_close - timestamp_enter).unsigned_abs();
         let mut accumulated_duration = self.completed_durations.entry(path)
             .or_default();
         *accumulated_duration += span_duration;
@@ -213,7 +251,7 @@ impl TimingAccumulator {
     }
 
     pub fn has_active_spans(&self) -> bool {
-        !self.timestamps_open.is_empty()
+        !self.enter_timestamps.is_empty()
     }
 
     pub fn collect_completed_timings(self) -> HashMap<SpanPath, Duration> {
