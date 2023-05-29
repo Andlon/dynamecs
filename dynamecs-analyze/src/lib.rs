@@ -65,7 +65,7 @@ pub struct Record {
     level: Level,
     spans: Option<Vec<Span>>,
     kind: RecordKind,
-    message: String,
+    message: Option<String>,
     timestamp: OffsetDateTime,
     thread_id: String,
 }
@@ -87,8 +87,8 @@ impl Record {
         &self.target
     }
 
-    pub fn message(&self) -> &str {
-        &self.message
+    pub fn message(&self) -> Option<&str> {
+        self.message.as_ref().map(AsRef::as_ref)
     }
 
     pub fn kind(&self) -> RecordKind {
@@ -183,8 +183,7 @@ struct RawRecord {
 impl RawRecord {
     fn try_to_record(self) -> eyre::Result<Record> {
         let message = self.fields.pointer("/message")
-            .and_then(|val| val.as_str())
-            .ok_or_else(|| eyre!("no message field"))?;
+            .and_then(|val| val.as_str());
 
         Ok(Record {
             target: self.target,
@@ -193,13 +192,11 @@ impl RawRecord {
             spans: self.spans.map(|json_vals| json_vals.into_iter().map(Span::try_from_json_value).collect::<eyre::Result<_>>())
                 .transpose()?,
             kind: match message {
-                // string if string == "new" => RecordKind::SpanNew,
-                // string if string == "close" => RecordKind::SpanClose,
-                string if string == "enter" => RecordKind::SpanEnter,
-                string if string == "exit" => RecordKind::SpanExit,
+                Some(string) if string == "enter" => RecordKind::SpanEnter,
+                Some(string) if string == "exit" => RecordKind::SpanExit,
                 _ => RecordKind::Event
             },
-            message: message.to_string(),
+            message: message.map(str::to_string),
             timestamp: self.timestamp,
             thread_id: self.thread_id,
         })

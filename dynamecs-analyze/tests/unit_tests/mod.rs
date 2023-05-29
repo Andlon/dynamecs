@@ -34,7 +34,7 @@ fn test_basic_records_iteration() {
         assert_eq!(record.level(), Level::Trace);
         assert_eq!(record.target(), "dynsys::backward_euler");
         assert_eq!(record.kind(), RecordKind::SpanEnter);
-        assert_eq!(record.message(), "enter");
+        assert_eq!(record.message(), Some("enter"));
         assert_eq!(record.timestamp(), &OffsetDateTime::parse("2023-03-29T12:48:50.213348Z", &Iso8601::DEFAULT).unwrap());
         assert_eq!(record.span().unwrap().name(), "Backward Euler IP assemble");
         assert_eq!(record.span().unwrap().fields(), &json! {{
@@ -75,7 +75,7 @@ fn test_basic_records_iteration() {
         assert_eq!(record.level(), Level::Info);
         assert_eq!(record.target(), "dynsys::backward_euler");
         assert_eq!(record.kind(), RecordKind::SpanExit);
-        assert_eq!(record.message(), "exit");
+        assert_eq!(record.message(), Some("exit"));
         assert_eq!(record.timestamp(), &OffsetDateTime::parse("2023-03-29T12:48:51.440914Z", &Iso8601::DEFAULT).unwrap());
         assert_eq!(record.span().unwrap().name(), "hessian");
         assert_eq!(record.span().unwrap().fields(), &json! {{
