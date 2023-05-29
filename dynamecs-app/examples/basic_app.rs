@@ -33,6 +33,20 @@ impl System for OtherSystemThatLogs {
         debug!(digits = 17, "some other debug info");
         {
             let _span = debug_span!("subspan1").entered();
+            {
+                {
+                    let _span = debug_span!("assembly").entered();
+                    {
+                        let _span = debug_span!("vector").entered();
+                    }
+                    {
+                        let _span = debug_span!("matrix").entered();
+                    }
+                }
+                {
+                    let _span = debug_span!("solve").entered();
+                }
+            }
         }
         {
             let _span = debug_span!("subspan2").entered();
