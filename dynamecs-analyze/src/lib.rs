@@ -52,8 +52,6 @@ impl Span {
 pub enum RecordKind {
     SpanEnter,
     SpanExit,
-    // SpanNew,
-    // SpanClose,
     Event,
 }
 
