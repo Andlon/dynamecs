@@ -6,13 +6,36 @@ use time::OffsetDateTime;
 use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
+use std::io::repeat;
+use std::iter;
 
 pub type TimingTree = SpanTree<DerivedStats>;
 type TimingTreeNode<'a> = SpanTreeNode<'a, DerivedStats>;
 
+/// Statistics measured directly from logs.
+#[derive(Debug, Clone, Default)]
+pub struct DirectStats {
+    /// Total accumulated duration for the span.
+    pub duration: Duration,
+    /// Number of times the span was entered and subsequently *exited*.
+    pub count: u64,
+}
+
+impl DirectStats {
+    pub fn from_single_duration(duration: Duration) -> Self {
+        Self { duration, count: 1 }
+    }
+
+    pub fn combine_mut(&mut self, other: &DirectStats) {
+        self.duration += other.duration;
+        self.count += other.count;
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DerivedStats {
     pub duration: Duration,
+    pub count: u64,
     pub duration_relative_to_parent: Option<f64>,
     pub duration_relative_to_root: Option<f64>,
 }
@@ -29,16 +52,34 @@ fn update_column_widths_for_line(column_widths: &mut Vec<usize>, line: &str) {
     }
 }
 
-fn write_table_line(output: &mut String, column_widths: &[usize], line: &str) {
+fn write_table_line(
+    output: &mut String,
+    line: &str,
+    column_widths: &[usize],
+    alignments: &[Alignment],
+) {
     let padding = 2;
     debug_assert_eq!(line.lines().count(), 1, "line string must consist of a single line");
-    for (cell, width) in line.split("\t").zip(column_widths) {
-        write!(output, "{cell:width$}", width=width + padding).unwrap();
+    let alignment_iter = alignments.iter().chain(iter::repeat(&Alignment::Left));
+    for ((cell, width), alignment) in line.split("\t").zip(column_widths).zip(alignment_iter) {
+        match alignment {
+            Alignment::Left => write!(output, "{cell:width$}", width=width).unwrap(),
+            Alignment::Right => write!(output, "{cell: >width$}", width=width).unwrap()
+        }
+        for _ in 0 .. padding {
+            output.push(' ');
+        }
     }
     writeln!(output).unwrap();
 }
 
-fn format_table(header: &str, table: &str) -> String {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum Alignment {
+    Left,
+    Right
+}
+
+fn format_table(header: &str, table: &str, alignments: &[Alignment]) -> String {
     debug_assert_eq!(header.lines().count(), 1, "Header must only have a single line");
     let mut column_widths = vec![];
     update_column_widths_for_line(&mut column_widths, header);
@@ -47,13 +88,14 @@ fn format_table(header: &str, table: &str) -> String {
     }
 
     let mut output = String::new();
-    write_table_line(&mut output, &column_widths, header);
+    // Use default alignment for table headers, apply alignments only to cells
+    write_table_line(&mut output, header, &column_widths, &[]);
     let header_len = output.len();
     output.push_str(&"═".repeat(header_len));
     writeln!(output).unwrap();
 
     for line in table.lines() {
-        write_table_line(&mut output, &column_widths, line);
+        write_table_line(&mut output, line, &column_widths, alignments);
     }
 
     output.push_str(&"═".repeat(header_len));
@@ -65,8 +107,10 @@ fn format_table(header: &str, table: &str) -> String {
 pub fn format_timing_tree(tree: &TimingTree) -> String {
     let mut table = String::new();
     write_timing_tree_node(&mut table, tree.root(), &mut vec![]);
-    format_table("Duration\tRel parent\tSpan",
-                 &table)
+    use Alignment::{Left, Right};
+    format_table("Duration\tCount\tRel parent\tSpan",
+                 &table,
+                 &vec![Right, Right, Right, Left])
 }
 
 fn write_timing_tree_node(
@@ -76,6 +120,8 @@ fn write_timing_tree_node(
 ) {
     let duration = node.payload().duration;
     write_duration(output, &duration);
+    let count = node.payload().count;
+    write!(output, "\t{count}").unwrap();
 
     if let Some(proportion) = node.payload().duration_relative_to_parent {
         let percentage = 100.0 * proportion;
@@ -131,7 +177,7 @@ fn write_duration(output: &mut String, duration: &Duration) {
 
 #[derive(Debug, Clone)]
 pub struct AccumulatedTimings {
-    span_durations: HashMap<SpanPath, Duration>,
+    span_stats: HashMap<SpanPath, DirectStats>,
 }
 
 #[derive(Debug, Clone)]
@@ -142,15 +188,15 @@ pub struct AccumulatedStepTimings {
 
 impl AccumulatedTimings {
     pub fn new() -> Self {
-        Self { span_durations: Default::default() }
+        Self { span_stats: Default::default() }
     }
 
     pub fn merge_with_others<'a>(&mut self, others: impl Iterator<Item=&'a AccumulatedTimings>) {
         for other in others {
-            for (path, duration) in &other.span_durations {
-                let current_duration = self.span_durations.entry(path.clone())
+            for (path, stats) in &other.span_stats {
+                let current_stats = self.span_stats.entry(path.clone())
                     .or_default();
-                *current_duration += *duration;
+                current_stats.combine_mut(&stats);
             }
         }
     }
@@ -158,18 +204,20 @@ impl AccumulatedTimings {
 
 impl AccumulatedTimings {
     pub fn create_timing_tree(&self) -> TimingTree {
-        let (paths, durations) = self.span_durations
+        let (paths, durations) = self.span_stats
             .iter()
             .map(|(path, duration)| (path.clone(), duration.clone()))
             .unzip();
         SpanTree::from_paths_and_payloads(paths, durations)
             .transform_payloads(|node| {
-                let duration = node.payload();
+                let stats = node.payload();
                 DerivedStats {
-                    duration: *duration,
+                    duration: stats.duration,
+                    count: stats.count,
                     duration_relative_to_parent: node.parent()
                         .map(|parent_node| {
-                            let parent_duration = parent_node.payload();
+                            let duration = stats.duration;
+                            let parent_duration = parent_node.payload().duration;
                             let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
                             proportion
                         }),
@@ -307,7 +355,7 @@ fn visit_dynamecs_step_span<'a>(
         Ok(None)
     } else {
         Ok(Some(AccumulatedStepTimings {
-            timings: AccumulatedTimings { span_durations: accumulator.collect_completed_timings() },
+            timings: AccumulatedTimings { span_stats: accumulator.collect_completed_statistics() },
             step_index
         }))
     }
@@ -315,13 +363,13 @@ fn visit_dynamecs_step_span<'a>(
 
 #[derive(Debug)]
 struct TimingAccumulator {
-    completed_durations: HashMap<SpanPath, Duration>,
+    completed_statistics: HashMap<SpanPath, DirectStats>,
     enter_timestamps: HashMap<SpanPath, OffsetDateTime>,
 }
 
 impl TimingAccumulator {
     pub fn new() -> Self {
-        Self { completed_durations: Default::default(), enter_timestamps: Default::default() }
+        Self { completed_statistics: Default::default(), enter_timestamps: Default::default() }
     }
 
     pub fn enter_span(&mut self, path: SpanPath, timestamp: OffsetDateTime) -> eyre::Result<()> {
@@ -335,9 +383,9 @@ impl TimingAccumulator {
         let timestamp_enter = self.enter_timestamps.remove(&path)
             .ok_or_else(|| eyre!("found close event for span that is not currently active. Span path: {path}"))?;
         let span_duration: Duration = (timestamp_close - timestamp_enter).unsigned_abs();
-        let accumulated_duration = self.completed_durations.entry(path)
+        let accumulated_stats = self.completed_statistics.entry(path)
             .or_default();
-        *accumulated_duration += span_duration;
+        accumulated_stats.combine_mut(&DirectStats::from_single_duration(span_duration));
         Ok(())
     }
 
@@ -345,8 +393,8 @@ impl TimingAccumulator {
         !self.enter_timestamps.is_empty()
     }
 
-    pub fn collect_completed_timings(self) -> HashMap<SpanPath, Duration> {
-        self.completed_durations
+    pub fn collect_completed_statistics(self) -> HashMap<SpanPath, DirectStats> {
+        self.completed_statistics
     }
 }
 
