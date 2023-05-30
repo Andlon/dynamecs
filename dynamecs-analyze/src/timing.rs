@@ -1,11 +1,13 @@
+use std::cmp::max;
 use std::collections::{HashMap};
-
 use std::time::Duration;
 use eyre::eyre;
 use time::OffsetDateTime;
 use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
+use tabwriter::TabWriter;
+use std::io::Write as IoWrite;
 
 pub type TimingTree = SpanTree<DerivedStats>;
 type TimingTreeNode<'a> = SpanTreeNode<'a, DerivedStats>;
@@ -17,22 +19,73 @@ pub struct DerivedStats {
     pub duration_relative_to_root: Option<f64>,
 }
 
-pub fn format_timing_tree(tree: &TimingTree) -> String {
-    let mut result = String::new();
-    write_timing_tree_node(&mut result, tree.root(), &mut vec![]);
-    result
+fn update_column_widths_for_line(column_widths: &mut Vec<usize>, line: &str) {
+    let mut column_iter = line.split("\t");
+    // Update existing column widths
+    for (col_width, column_content) in column_widths.iter_mut().zip(column_iter.by_ref()) {
+        *col_width = max(*col_width, column_content.len());
+    }
+    // Push new column widths
+    for column_content in column_iter {
+        column_widths.push(column_content.len());
+    }
 }
 
-fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stack: &mut Vec<bool>) {
+fn write_table_line(output: &mut String, column_widths: &[usize], line: &str) {
+    let padding = 2;
+    debug_assert_eq!(line.lines().count(), 1, "line string must consist of a single line");
+    for (cell, width) in line.split("\t").zip(column_widths) {
+        write!(output, "{cell:width$}", width=width + padding).unwrap();
+    }
+    writeln!(output).unwrap();
+}
+
+fn format_table(header: &str, table: &str) -> String {
+    debug_assert_eq!(header.lines().count(), 1, "Header must only have a single line");
+    let mut column_widths = vec![];
+    update_column_widths_for_line(&mut column_widths, header);
+    for line in table.lines() {
+        update_column_widths_for_line(&mut column_widths, line);
+    }
+
+    let mut output = String::new();
+    write_table_line(&mut output, &column_widths, header);
+    let header_len = output.len();
+    output.push_str(&"─".repeat(header_len));
+    writeln!(output).unwrap();
+
+    for line in table.lines() {
+        write_table_line(&mut output, &column_widths, line);
+    }
+
+    output.push_str(&"─".repeat(header_len));
+    writeln!(output).unwrap();
+
+    output
+}
+
+pub fn format_timing_tree(tree: &TimingTree) -> String {
+    let mut table = String::new();
+    write_timing_tree_node(&mut table, tree.root(), &mut vec![]);
+    format_table("Duration\tRel parent\tSpan",
+                 &table)
+}
+
+fn write_timing_tree_node(
+    output: &mut String,
+    node: TimingTreeNode,
+    active_stack: &mut Vec<bool>
+) {
     let duration = node.payload().duration;
-    let _ = write!(output, "{duration:10.1?}\t");
+    let _ = write!(output, "{duration:10.1?}");
 
     if let Some(proportion) = node.payload().duration_relative_to_parent {
         let percentage = 100.0 * proportion;
-        let _ = write!(output, "{percentage:5.1}%  ");
+        let _ = write!(output, "\t{percentage:5.1} %");
     } else {
-        let _ = write!(output, "   N/A  ");
+        let _ = write!(output, "\tN/A");
     }
+    write!(output, "\t").unwrap();
 
     if let Some((&parent_is_active, predecessors)) = active_stack.split_last() {
         for &is_active in predecessors {

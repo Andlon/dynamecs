@@ -34,6 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let summary_tree = timings.summarize().create_timing_tree();
         println!("Aggregate timings");
         println!("════════════════════════════════");
+        println!();
         let prefixed_summary_tree = add_prefix_to_multiline_string(
             &format_timing_tree(&summary_tree), "  ");
         println!("{prefixed_summary_tree}");
