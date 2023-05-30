@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::{fmt, slice};
-use std::io::{stdout, Write};
+use std::{slice};
+use std::io::{Write};
 use std::time::Duration;
 use tabwriter::TabWriter;
 use dynamecs_analyze::iterate_records;
@@ -66,7 +66,7 @@ fn compute_self_durations(
 ) -> HashMap<Vec<String>, Duration> {
     let mut self_durations_map = timings_map.clone();
     for timing in timings {
-        if let Some(mut parent_self_duration) = self_durations_map.get_mut(timing.parent()) {
+        if let Some(parent_self_duration) = self_durations_map.get_mut(timing.parent()) {
             *parent_self_duration -= timing.duration();
         }
     }

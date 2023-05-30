@@ -1,5 +1,5 @@
 use dynamecs_analyze::SpanPath;
-use super::span_path;
+
 
 #[test]
 fn is_parent_of() {

@@ -1,6 +1,6 @@
-use std::cell::RefCell;
+
 use std::fmt::{Debug, Formatter};
-use std::rc::Rc;
+
 use crate::SpanPath;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,7 +69,7 @@ impl<Payload> SpanTree<Payload> {
     /// Return an identical tree in which the payload associated with each node
     /// is transformed by the provided transformation function.
     pub fn transform_payloads<Payload2>(&mut self,
-                                        mut transform: impl FnMut(SpanTreeNode<Payload>) -> Payload2)
+                                        transform: impl FnMut(SpanTreeNode<Payload>) -> Payload2)
         -> SpanTree<Payload2> {
         let new_payloads: Vec<_> = (0 .. self.tree_depth_first.len())
             .map(|i| SpanTreeNode {

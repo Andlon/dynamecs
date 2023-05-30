@@ -1,10 +1,10 @@
-use std::collections::{BTreeMap, HashMap};
-use std::iter::Peekable;
+use std::collections::{HashMap};
+
 use std::time::Duration;
 use eyre::eyre;
 use time::OffsetDateTime;
 use RecordKind::{SpanEnter, SpanExit};
-use crate::{Record, RecordKind, Span, SpanPath, SpanTree, SpanTreeNode};
+use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
 
 pub type TimingTree = SpanTree<DerivedStats>;
@@ -81,7 +81,7 @@ impl AccumulatedTimings {
     pub fn merge_with_others<'a>(&mut self, others: impl Iterator<Item=&'a AccumulatedTimings>) {
         for other in others {
             for (path, duration) in &other.span_durations {
-                let mut current_duration = self.span_durations.entry(path.clone())
+                let current_duration = self.span_durations.entry(path.clone())
                     .or_default();
                 *current_duration += *duration;
             }
@@ -268,7 +268,7 @@ impl TimingAccumulator {
         let timestamp_enter = self.enter_timestamps.remove(&path)
             .ok_or_else(|| eyre!("found close event for span that is not currently active. Span path: {path}"))?;
         let span_duration: Duration = (timestamp_close - timestamp_enter).unsigned_abs();
-        let mut accumulated_duration = self.completed_durations.entry(path)
+        let accumulated_duration = self.completed_durations.entry(path)
             .or_default();
         *accumulated_duration += span_duration;
         Ok(())

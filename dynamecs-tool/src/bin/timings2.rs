@@ -1,6 +1,6 @@
 use std::error::Error;
 use dynamecs_analyze::iterate_records;
-use dynamecs_analyze::{SpanTree, SpanTreeNode};
+
 use dynamecs_analyze::timing2::{extract_step_timings, format_timing_tree};
 use std::fmt::Write;
 
@@ -14,7 +14,7 @@ fn add_prefix_to_multiline_string(string: &str, prefix: &str) -> String {
 
 fn main() -> Result<(), Box<dyn Error>> {
     if let Some(arg) = std::env::args().skip(1).next() {
-        let mut records_result_iter = iterate_records(arg)?;
+        let records_result_iter = iterate_records(arg)?;
         let records_iter = records_result_iter
             // TODO: Use peeking_take_while or something so that we can
             // check for errors in the remaining records in combination with .by_ref()
