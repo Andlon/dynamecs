@@ -41,10 +41,6 @@ impl<Payload> SpanTree<Payload> {
             }
         }
 
-
-
-
-
         // for pair in paths.windows(2) {
         //     let [path1, path2]: &[SpanPath; 2] = pair.try_into().unwrap();
         //     if path1.
@@ -68,6 +64,22 @@ impl<Payload> SpanTree<Payload> {
             tree_depth_first,
             payloads
         }
+    }
+
+    /// Return an identical tree in which the payload associated with each node
+    /// is transformed by the provided transformation function.
+    pub fn transform_payloads<Payload2>(&mut self,
+                                        mut transform: impl FnMut(SpanTreeNode<Payload>) -> Payload2)
+        -> SpanTree<Payload2> {
+        let new_payloads: Vec<_> = (0 .. self.tree_depth_first.len())
+            .map(|i| SpanTreeNode {
+                tree_depth_first: &self.tree_depth_first,
+                payloads: &self.payloads,
+                index: i,
+            }).map(transform)
+            .collect();
+
+        SpanTree::from_paths_and_payloads(self.tree_depth_first.clone(), new_payloads)
     }
 }
 

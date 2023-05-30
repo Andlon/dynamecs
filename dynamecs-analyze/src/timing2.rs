@@ -7,8 +7,15 @@ use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, Span, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
 
-pub type TimingTree = SpanTree<Duration>;
-type TimingTreeNode<'a> = SpanTreeNode<'a, Duration>;
+pub type TimingTree = SpanTree<DerivedStats>;
+type TimingTreeNode<'a> = SpanTreeNode<'a, DerivedStats>;
+
+#[derive(Debug, Clone)]
+pub struct DerivedStats {
+    pub duration: Duration,
+    pub duration_relative_to_parent: Option<f64>,
+    pub duration_relative_to_root: Option<f64>,
+}
 
 pub fn format_timing_tree(tree: &TimingTree) -> String {
     let mut result = String::new();
@@ -17,8 +24,15 @@ pub fn format_timing_tree(tree: &TimingTree) -> String {
 }
 
 fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stack: &mut Vec<bool>) {
-    // TODO: Not true anymore?
-    // Based on this Stackoverflow post: https://stackoverflow.com/a/8948691
+    let duration = node.payload().duration;
+    let _ = write!(output, "{duration:10.1?}\t");
+
+    if let Some(proportion) = node.payload().duration_relative_to_parent {
+        let percentage = 100.0 * proportion;
+        let _ = write!(output, "{percentage:5.1}%  ");
+    } else {
+        let _ = write!(output, "   N/A  ");
+    }
 
     if let Some((&parent_is_active, predecessors)) = active_stack.split_last() {
         for &is_active in predecessors {
@@ -38,6 +52,9 @@ fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stac
     writeln!(output, "{}", node.path().span_name().unwrap_or("no name? Fix, TODO")).unwrap();
     let num_children = node.count_children();
     for (child_idx, child) in node.visit_children().enumerate() {
+        // We say that an ancestor is "active" if it's not yet processing its last child.
+        // This criterion lets us avoid drawing excessive numbers of vertical lines,
+        // which make for a visually confusing picture.
         let is_last_child = child_idx + 1 == num_children;
         active_stack.push(!is_last_child);
         write_timing_tree_node(output, child, &mut *active_stack);
@@ -50,12 +67,18 @@ pub struct AccumulatedTimings {
     span_durations: HashMap<SpanPath, Duration>,
 }
 
+#[derive(Debug, Clone)]
+pub struct AccumulatedStepTimings {
+    pub timings: AccumulatedTimings,
+    pub step_index: u64,
+}
+
 impl AccumulatedTimings {
     pub fn new() -> Self {
         Self { span_durations: Default::default() }
     }
 
-    pub fn merge_with_others(&mut self, others: &[AccumulatedTimings]) {
+    pub fn merge_with_others<'a>(&mut self, others: impl Iterator<Item=&'a AccumulatedTimings>) {
         for other in others {
             for (path, duration) in &other.span_durations {
                 let mut current_duration = self.span_durations.entry(path.clone())
@@ -72,47 +95,60 @@ impl AccumulatedTimings {
             .iter()
             .map(|(path, duration)| (path.clone(), duration.clone()))
             .unzip();
-        TimingTree::from_paths_and_payloads(paths, durations)
+        SpanTree::from_paths_and_payloads(paths, durations)
+            .transform_payloads(|node| {
+                let duration = node.payload();
+                DerivedStats {
+                    duration: *duration,
+                    duration_relative_to_parent: node.parent()
+                        .map(|parent_node| {
+                            let parent_duration = parent_node.payload();
+                            let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
+                            proportion
+                        }),
+                    duration_relative_to_root: None,
+                }
+            })
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AccumulatedTimingSeries {
-    steps: Vec<AccumulatedTimings>,
+    steps: Vec<AccumulatedStepTimings>,
     // TODO: Timing from other sources outside of steps?
 }
 
 impl AccumulatedTimingSeries {
     pub fn summarize(&self) -> AccumulatedTimings {
         let mut summary = AccumulatedTimings::new();
-        summary.merge_with_others(self.steps());
+        summary.merge_with_others(self.steps().iter().map(|step| &step.timings));
         summary
     }
 }
 
 impl AccumulatedTimingSeries {
-    pub fn steps(&self) -> &[AccumulatedTimings] {
+    pub fn steps(&self) -> &[AccumulatedStepTimings] {
         &self.steps
     }
 }
 
-pub fn extract_step_timings<'a>(records: impl IntoIterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimingSeries> {
+pub fn extract_step_timings<'a>(records: impl IntoIterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
     // TODO: Collect statistics from spans outside run as well
     find_and_visit_dynamecs_run_span(records.into_iter())
 }
 
-pub fn extract_timing_summary<'a>(records: impl IntoIterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimings> {
+pub fn extract_timing_summary<'a>(records: impl IntoIterator<Item=Record>) -> eyre::Result<AccumulatedTimings> {
     extract_step_timings(records).map(|series| series.summarize())
 }
 
-fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimingSeries> {
+fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
     // First try to find the `run` span in the records
     while let Some(record) = records.next() {
         if let Some(span) = record.span() {
             if span.name() == "run"
                 && record.target() == "dynamecs_app"
                 && record.kind() == RecordKind::SpanEnter {
-                return visit_dynamecs_run_span(record, records);
+                return visit_dynamecs_run_span(&record, records);
             }
         }
     }
@@ -120,7 +156,7 @@ fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=&'a Reco
     Err(eyre!("Could not find new event for `run` span of dynamecs among records"))
 }
 
-fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl Iterator<Item=&'a Record>) -> eyre::Result<AccumulatedTimingSeries> {
+fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl Iterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
     let run_thread = run_new_record.thread_id();
     let run_span_path = run_new_record.span_path();
     let mut iter = remaining_records;
@@ -132,7 +168,7 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
             if let Some(span) = record.span() {
                 match (span.name(), record.target(), record.kind()) {
                     ("step", "dynamecs_app", SpanEnter) => {
-                        if let Some(step) = visit_dynamecs_step_span(record, &mut iter)? {
+                        if let Some(step) = visit_dynamecs_step_span(&record, &mut iter)? {
                             // Only collect complete time steps
                             steps.push(step);
                         }
@@ -155,12 +191,17 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
 /// Returns accumulated timings for the next *complete* step in the records.
 fn visit_dynamecs_step_span<'a>(
     step_new_record: &Record,
-    remaining_records: &mut impl Iterator<Item=&'a Record>
-) -> eyre::Result<Option<AccumulatedTimings>> {
+    remaining_records: &mut impl Iterator<Item=Record>
+) -> eyre::Result<Option<AccumulatedStepTimings>> {
     let step_path = step_new_record.span_path();
 
     let mut accumulator = TimingAccumulator::new();
     accumulator.enter_span(step_path.clone(), step_new_record.timestamp().clone())?;
+
+    let step_index = step_new_record.span()
+        .and_then(|span| span.fields().pointer("/step_index"))
+        .and_then(|value| value.as_u64())
+        .ok_or_else(|| eyre!("step span does not have step_index field"))?;
 
     while let Some(record) = remaining_records.next() {
         if record.thread_id() == step_new_record.thread_id() {
@@ -186,26 +227,6 @@ fn visit_dynamecs_step_span<'a>(
                             break;
                         }
                     }
-                    // SpanNew => {
-                    //     // Looks like new events also don't carry the
-                    //     let mut span_path = record.span_path();
-                    // },
-                    // SpanClose => {
-                    //     // TODO: use a stack to verify that open/close events are consistent?
-                    //     let mut span_path = record.span_path();
-                    //     // Close events don't report the current span anymore,
-                    //     // so we need to add this to get a path consistent with the
-                    //     // "new" event
-                    //     span_path.push_span_name(span.name().to_string());
-                    //     let is_step_span_path = span_path == step_path;
-                    //     accumulator.close_span(span_path,
-                    //                            record.timestamp().clone())?;
-                    //     if span.name() == "step"
-                    //         && record.target() == "dynamecs_app"
-                    //         && is_step_span_path {
-                    //         break;
-                    //     }
-                    // },
                     _ => {}
                 }
             }
@@ -218,7 +239,10 @@ fn visit_dynamecs_step_span<'a>(
         // (would lead to inconsistent time between parent and children)
         Ok(None)
     } else {
-        Ok(Some(AccumulatedTimings { span_durations: accumulator.collect_completed_timings() }))
+        Ok(Some(AccumulatedStepTimings {
+            timings: AccumulatedTimings { span_durations: accumulator.collect_completed_timings() },
+            step_index
+        }))
     }
 }
 

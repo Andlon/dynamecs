@@ -68,6 +68,7 @@ pub struct Record {
     message: Option<String>,
     timestamp: OffsetDateTime,
     thread_id: String,
+    fields: serde_json::Value,
 }
 
 impl Record {
@@ -107,8 +108,13 @@ impl Record {
             .collect();
         SpanPath::new(span_names)
     }
+
     pub fn thread_id(&self) -> &str {
         &self.thread_id
+    }
+
+    pub fn fields(&self) -> &serde_json::Value {
+        &self.fields
     }
 }
 
@@ -199,6 +205,7 @@ impl RawRecord {
             message: message.map(str::to_string),
             timestamp: self.timestamp,
             thread_id: self.thread_id,
+            fields: self.fields,
         })
     }
 }
