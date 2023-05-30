@@ -54,6 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 &format_timing_tree(&summary_tree), "  ");
             println!("{prefixed_summary_tree}");
             println!();
+            println!("Number of completed time steps: {}", timings.steps().len());
         }
     }
 
