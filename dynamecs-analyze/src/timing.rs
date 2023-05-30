@@ -51,14 +51,14 @@ fn format_table(header: &str, table: &str) -> String {
     let mut output = String::new();
     write_table_line(&mut output, &column_widths, header);
     let header_len = output.len();
-    output.push_str(&"─".repeat(header_len));
+    output.push_str(&"═".repeat(header_len));
     writeln!(output).unwrap();
 
     for line in table.lines() {
         write_table_line(&mut output, &column_widths, line);
     }
 
-    output.push_str(&"─".repeat(header_len));
+    output.push_str(&"═".repeat(header_len));
     writeln!(output).unwrap();
 
     output
@@ -77,13 +77,13 @@ fn write_timing_tree_node(
     active_stack: &mut Vec<bool>
 ) {
     let duration = node.payload().duration;
-    let _ = write!(output, "{duration:10.1?}");
+    write_duration(output, &duration);
 
     if let Some(proportion) = node.payload().duration_relative_to_parent {
         let percentage = 100.0 * proportion;
         let _ = write!(output, "\t{percentage:5.1} %");
     } else {
-        let _ = write!(output, "\tN/A");
+        let _ = write!(output, "\t    N/A");
     }
     write!(output, "\t").unwrap();
 
@@ -112,6 +112,22 @@ fn write_timing_tree_node(
         active_stack.push(!is_last_child);
         write_timing_tree_node(output, child, &mut *active_stack);
         active_stack.pop();
+    }
+}
+
+// TODO: Unit tests for this one?
+fn write_duration(output: &mut String, duration: &Duration) {
+    let secs = duration.as_secs_f64();
+    if 1e-9 <= secs && secs < 1e-6 {
+        write!(output, "{:5.1} ns", secs / 1e-9).unwrap();
+    } else if 1e-6 <= secs && secs < 1e-3 {
+        write!(output, "{:5.1} μs", secs / 1e-6).unwrap();
+    } else if 1e-3 <= secs && secs < 1.0 {
+        write!(output, "{:5.1} ms", secs / 1e-3).unwrap();
+    } else if 1.0 <= secs && secs < 1e3 {
+        write!(output, "{:5.1} s ", secs).unwrap();
+    } else {
+        write!(output, "{:5.1e} s ", secs).unwrap();
     }
 }
 
