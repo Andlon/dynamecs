@@ -1,7 +1,7 @@
 use std::error::Error;
 use dynamecs_analyze::iterate_records;
 
-use dynamecs_analyze::timing2::{extract_step_timings, format_timing_tree};
+use dynamecs_analyze::timing::{extract_step_timings, format_timing_tree};
 use std::fmt::Write;
 
 fn add_prefix_to_multiline_string(string: &str, prefix: &str) -> String {

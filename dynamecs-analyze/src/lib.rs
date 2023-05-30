@@ -9,8 +9,7 @@ use flate2::read::GzDecoder;
 use serde::Deserialize;
 use time::OffsetDateTime;
 
-// pub mod timing;
-pub mod timing2;
+pub mod timing;
 
 mod span_path;
 pub use span_path::{SpanPath};

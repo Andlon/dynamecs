@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use dynamecs_analyze::iterate_records;
-use dynamecs_analyze::timing2::{extract_step_timings, format_timing_tree};
+use dynamecs_analyze::timing::{extract_step_timings, format_timing_tree};
 
 #[test]
 fn extract_timings() -> eyre::Result<()> {
