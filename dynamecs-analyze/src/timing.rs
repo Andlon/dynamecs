@@ -6,8 +6,6 @@ use time::OffsetDateTime;
 use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
-use tabwriter::TabWriter;
-use std::io::Write as IoWrite;
 
 pub type TimingTree = SpanTree<DerivedStats>;
 type TimingTreeNode<'a> = SpanTreeNode<'a, DerivedStats>;
