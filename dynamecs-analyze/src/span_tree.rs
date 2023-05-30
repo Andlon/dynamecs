@@ -115,6 +115,13 @@ impl<'a, Payload> SpanTreeNode<'a, Payload> {
         self.visit_children().count()
     }
 
+    pub fn root(&self) -> SpanTreeNode<'a, Payload> {
+        SpanTreeNode {
+            index: 0,
+            .. *self
+        }
+    }
+
     pub fn parent(&self) -> Option<SpanTreeNode<'a, Payload>> {
         self.path()
             .parent()

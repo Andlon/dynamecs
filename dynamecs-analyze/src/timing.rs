@@ -6,7 +6,6 @@ use time::OffsetDateTime;
 use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
-use std::io::repeat;
 use std::iter;
 
 pub type TimingTree = SpanTree<DerivedStats>;
@@ -108,9 +107,18 @@ pub fn format_timing_tree(tree: &TimingTree) -> String {
     let mut table = String::new();
     write_timing_tree_node(&mut table, tree.root(), &mut vec![]);
     use Alignment::{Left, Right};
-    format_table("Duration\tCount\tRel parent\tSpan",
+    format_table("Total\tAverage\tCount\tRel parent\tRel root\tSpan",
                  &table,
                  &vec![Right, Right, Right, Left])
+}
+
+fn write_proportion(output: &mut String, proportion: Option<f64>) {
+    if let Some(proportion) = proportion {
+        let percentage = 100.0 * proportion;
+        let _ = write!(output, "{percentage:5.1} %");
+    } else {
+        let _ = write!(output, "    N/A");
+    }
 }
 
 fn write_timing_tree_node(
@@ -119,18 +127,19 @@ fn write_timing_tree_node(
     active_stack: &mut Vec<bool>
 ) {
     let duration = node.payload().duration;
-    write_duration(output, &duration);
     let count = node.payload().count;
+    write_duration(output, &duration);
+    write!(output, "\t").unwrap();
+    write_duration(output, &duration.div_f64(count as f64));
+
     write!(output, "\t{count}").unwrap();
 
-    if let Some(proportion) = node.payload().duration_relative_to_parent {
-        let percentage = 100.0 * proportion;
-        let _ = write!(output, "\t{percentage:5.1} %");
-    } else {
-        let _ = write!(output, "\t    N/A");
-    }
     write!(output, "\t").unwrap();
+    write_proportion(output, node.payload().duration_relative_to_parent);
+    write!(output, "\t").unwrap();
+    write_proportion(output, node.payload().duration_relative_to_root);
 
+    write!(output, "\t").unwrap();
     if let Some((&parent_is_active, predecessors)) = active_stack.split_last() {
         for &is_active in predecessors {
             if is_active {
@@ -211,17 +220,24 @@ impl AccumulatedTimings {
         SpanTree::from_paths_and_payloads(paths, durations)
             .transform_payloads(|node| {
                 let stats = node.payload();
+                let duration = stats.duration;
                 DerivedStats {
                     duration: stats.duration,
                     count: stats.count,
                     duration_relative_to_parent: node.parent()
                         .map(|parent_node| {
-                            let duration = stats.duration;
                             let parent_duration = parent_node.payload().duration;
                             let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
                             proportion
                         }),
-                    duration_relative_to_root: None,
+                    duration_relative_to_root: Some(node.root())
+                        // TODO: There will always be a root at the moment,\
+                        // but we'll probably later have root nodes with an optional Duration"
+                        .map(|root_node| {
+                            let root_duration = root_node.payload().duration;
+                            let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
+                            proportion
+                        })
                 }
             })
     }
