@@ -109,7 +109,7 @@ pub fn format_timing_tree(tree: &TimingTree) -> String {
     use Alignment::{Left, Right};
     format_table("Total\tAverage\tCount\tRel parent\tRel root\tSpan",
                  &table,
-                 &vec![Right, Right, Right, Left])
+                 &vec![Right, Right, Right, Right, Right, Left])
 }
 
 fn write_proportion(output: &mut String, proportion: Option<f64>) {
