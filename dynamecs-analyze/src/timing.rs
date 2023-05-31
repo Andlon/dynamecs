@@ -315,7 +315,6 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
                     (span_name, record_target, SpanExit) => {
                         intransient_accumulator.exit_span(record.create_span_path()?, *record.timestamp())?;
                         if span_name == "run" && record_target == "dynamecs_app" {
-                            dbg!("Breaking");
                             break;
                         }
                     },
