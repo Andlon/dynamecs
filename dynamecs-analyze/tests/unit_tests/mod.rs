@@ -85,3 +85,11 @@ fn test_basic_records_iteration() {
         // TODO: Test the rest
     }
 }
+
+#[test]
+fn test_write_records() {
+    {
+        todo!()
+    }
+
+}

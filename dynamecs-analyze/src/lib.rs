@@ -1,12 +1,14 @@
 use std::ffi::OsStr;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Lines, Read};
+use std::io;
+use std::io::{BufRead, BufReader, Lines, Read, Write};
 use std::path::Path;
 use std::str::FromStr;
 use eyre::{ErrReport, eyre};
 use flate2::read::GzDecoder;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use time::OffsetDateTime;
 
 pub mod timing;
@@ -37,6 +39,12 @@ impl Span {
             name,
             fields: value
         })
+    }
+
+    fn to_json_value(self) -> serde_json::Value {
+        let mut fields = self.fields;
+        *fields.get_mut("name").unwrap() = Value::String(self.name);
+        fields
     }
 
     pub fn name(&self) -> &str {
@@ -130,6 +138,129 @@ impl Record {
     }
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct RecordBuilder {
+    target: Option<String>,
+    span: Option<Span>,
+    level: Option<Level>,
+    spans: Option<Vec<Span>>,
+    kind: Option<RecordKind>,
+    message: Option<String>,
+    timestamp: Option<OffsetDateTime>,
+    thread_id: Option<String>,
+    fields: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RecordBuildError {
+    message: String,
+}
+
+impl Display for RecordBuildError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "error building record: {}", &self.message)
+    }
+}
+
+impl RecordBuildError {
+    fn missing_field(field_name: &str) -> Self {
+        Self {
+            message: format!("missing field {field_name} in Record construction"),
+        }
+    }
+
+    fn message(message: String) -> Self {
+        Self { message }
+    }
+
+}
+
+impl RecordBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_target(&mut self, target: String) -> &mut Self {
+        self.target.replace(target);
+        self
+    }
+
+    pub fn with_span(&mut self, span: Span) -> &mut Self {
+        self.span.replace(span);
+        self
+    }
+
+    pub fn with_level(&mut self, level: Level) -> &mut Self {
+        self.level.replace(level);
+        self
+    }
+
+    pub fn with_spans(&mut self, spans: Vec<Span>) -> &mut Self {
+        self.spans.replace(spans);
+        self
+    }
+
+    pub fn with_kind(&mut self, kind: RecordKind) -> &mut Self {
+        self.kind.replace(kind);
+        self
+    }
+
+    pub fn with_message(&mut self, message: String) -> &mut Self {
+        self.message.replace(message);
+        self
+    }
+
+    pub fn with_timestamp(&mut self, timestamp: OffsetDateTime) -> &mut Self {
+        self.timestamp.replace(timestamp);
+        self
+    }
+
+    pub fn with_thread_id(&mut self, thread_id: String) -> &mut Self {
+        self.thread_id.replace(thread_id);
+        self
+    }
+
+    pub fn with_fields(&mut self, fields: serde_json::Value) -> &mut Self {
+        self.fields.replace(fields);
+        self
+    }
+
+    pub fn build(self) -> Result<Record, RecordBuildError> {
+        let kind = self.kind.ok_or_else(|| RecordBuildError::missing_field("kind"))?;
+        Ok(Record {
+            target: self.target.ok_or_else(|| RecordBuildError::missing_field("target"))?,
+            span: self.span,
+            level: self.level.ok_or_else(|| RecordBuildError::missing_field("level"))?,
+            spans: self.spans,
+            message: match kind {
+                RecordKind::SpanEnter => {
+                    let msg_valid = self.message.map(|msg| msg == "enter").unwrap_or(true);
+                    if !msg_valid {
+                        return Err(RecordBuildError::message(
+                            "span enter records cannot have \
+                             message other than \"enter\"".to_string()));
+                    }
+                    Some("enter".to_string())
+                },
+                RecordKind::SpanExit => {
+                    let msg_valid = self.message.map(|msg| msg == "exit").unwrap_or(true);
+                    if !msg_valid {
+                        return Err(RecordBuildError::message(
+                            "span exit records cannot have \
+                             message other than \"exit\"".to_string()));
+                    }
+                    Some("exit".to_string())
+                },
+                RecordKind::Event => { self.message }
+            },
+            kind,
+            timestamp: self.timestamp.ok_or_else(|| RecordBuildError::missing_field("timestamp"))?,
+            thread_id: self.thread_id.ok_or_else(|| RecordBuildError::missing_field("thread_id"))?,
+            fields: self.fields.unwrap_or_else(|| serde_json::Value::Object(Map::default())),
+        })
+    }
+}
+
 pub struct RecordIter {
     lines_iter: Lines<BufReader<Box<dyn Read>>>,
 }
@@ -162,6 +293,15 @@ fn iterate_records_from_reader_(reader: BufReader<Box<dyn Read>>) -> RecordIter 
     }
 }
 
+pub fn write_records(mut writer: impl Write, records: impl Iterator<Item=Record>) -> io::Result<()> {
+    for record in records {
+        let raw_record = RawRecord::from_record(record);
+        serde_json::to_writer(&mut writer, &raw_record)?;
+        writer.write_all(b"\n")?;
+    }
+    Ok(())
+}
+
 impl Iterator for RecordIter {
     // TODO: Use a proper error type here
     type Item = eyre::Result<Record>;
@@ -185,8 +325,10 @@ impl Iterator for RecordIter {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RawRecord {
+    // TODO: Consider replacing time with Chrono. From my understanding, only Chrono
+    // properly and soundly works with local time on Linux
     #[serde(with = "time::serde::iso8601")]
     timestamp: OffsetDateTime,
     level: String,
@@ -219,6 +361,18 @@ impl RawRecord {
             thread_id: self.thread_id,
             fields: self.fields,
         })
+    }
+
+    fn from_record(record: Record) -> Self {
+        Self {
+            timestamp: record.timestamp,
+            level: record.level().to_string(),
+            fields: record.fields,
+            target: record.target,
+            span: record.span.map(|span| span.to_json_value()),
+            spans: record.spans.map(|spans| spans.into_iter().map(|span| span.to_json_value()).collect()),
+            thread_id: record.thread_id
+        }
     }
 }
 
@@ -262,5 +416,17 @@ impl FromStr for Level {
         } else {
             Err(InvalidLevelString)
         }
+    }
+}
+
+impl ToString for Level {
+    fn to_string(&self) -> String {
+        match self {
+            Level::Error => "ERROR",
+            Level::Warn => "WARN",
+            Level::Info => "INFO",
+            Level::Debug => "DEBUG",
+            Level::Trace => "TRACE",
+        }.to_string()
     }
 }
