@@ -246,12 +246,15 @@ impl AccumulatedTimings {
 #[derive(Debug, Clone)]
 pub struct AccumulatedTimingSeries {
     steps: Vec<AccumulatedStepTimings>,
+    /// Timings for any spans that are not part of the "step" span (could be related to setup)
+    /// or similar.
+    intransient_timings: AccumulatedTimings,
     // TODO: Timing from other sources outside of steps?
 }
 
 impl AccumulatedTimingSeries {
     pub fn summarize(&self) -> AccumulatedTimings {
-        let mut summary = AccumulatedTimings::new();
+        let mut summary = self.intransient_timings.clone();
         summary.merge_with_others(self.steps().iter().map(|step| &step.timings));
         summary
     }
@@ -289,10 +292,11 @@ fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=Record>)
 
 fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl Iterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
     let run_thread = run_new_record.thread_id();
-    let run_span_path = run_new_record.span_path();
     let mut iter = remaining_records;
-
     let mut steps = Vec::new();
+
+    let mut intransient_accumulator = TimingAccumulator::new();
+    intransient_accumulator.enter_span(run_new_record.create_span_path()?, *run_new_record.timestamp())?;
 
     while let Some(record) = iter.next() {
         if record.thread_id() == run_thread {
@@ -304,10 +308,17 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
                             steps.push(step);
                         }
                     },
-                    ("run", "dynamecs_app", SpanExit) if record.span_path() == run_span_path => {
-                        break;
+                    // Accumulate "intransient timings", i.e. timings for things that are
+                    // not inside of a step
+                    (_, _, SpanEnter) => intransient_accumulator.enter_span(
+                        record.create_span_path()?, *record.timestamp())?,
+                    (span_name, record_target, SpanExit) => {
+                        intransient_accumulator.exit_span(record.create_span_path()?, *record.timestamp())?;
+                        if span_name == "run" && record_target == "dynamecs_app" {
+                            dbg!("Breaking");
+                            break;
+                        }
                     },
-                    // TODO: Still accumulate timings for other things?
                     _ => {}
                 }
             }
@@ -315,7 +326,10 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
     }
 
     Ok(AccumulatedTimingSeries {
-        steps
+        steps,
+        intransient_timings: AccumulatedTimings {
+            span_stats: intransient_accumulator.collect_completed_statistics()
+        },
     })
 }
 
@@ -324,7 +338,7 @@ fn visit_dynamecs_step_span<'a>(
     step_new_record: &Record,
     remaining_records: &mut impl Iterator<Item=Record>
 ) -> eyre::Result<Option<AccumulatedStepTimings>> {
-    let step_path = step_new_record.span_path();
+    let step_path = step_new_record.create_span_path()?;
 
     let mut accumulator = TimingAccumulator::new();
     accumulator.enter_span(step_path.clone(), step_new_record.timestamp().clone())?;
@@ -339,16 +353,12 @@ fn visit_dynamecs_step_span<'a>(
             if let Some(span) = record.span() {
                 match record.kind() {
                     SpanEnter => {
-                        accumulator.enter_span(record.span_path(),
+                        accumulator.enter_span(record.create_span_path()?,
                                                record.timestamp().clone())?;
                     },
                     SpanExit => {
                         // TODO: use a stack to verify that open/close events are consistent?
-                        let mut span_path = record.span_path();
-                        // Close events don't report the current span anymore,
-                        // so we need to add this to get a path consistent with the
-                        // "new" event
-                        span_path.push_span_name(span.name().to_string());
+                        let span_path = record.create_span_path()?;
                         let is_step_span_path = span_path == step_path;
                         accumulator.exit_span(span_path,
                                               record.timestamp().clone())?;

@@ -97,13 +97,28 @@ impl Record {
         &self.timestamp
     }
 
-    pub fn span_path(&self) -> SpanPath {
-        let span_names = self.spans
+    /// Create the span path associated with this record.
+    ///
+    /// For span enter/exit records, this is the span that is currently being entered/exited,
+    /// and for events it is the path to the span in which the event takes place.
+    pub fn create_span_path(&self) -> eyre::Result<SpanPath> {
+        let mut span_names: Vec<_> = self.spans
             .iter()
             .flatten()
             .map(|span| span.name.clone())
             .collect();
-        SpanPath::new(span_names)
+        match self.kind() {
+            RecordKind::SpanEnter | RecordKind::Event => {},
+            RecordKind::SpanExit => {
+                // The exit record does not include the span currently being exited
+                // in the list of entered spans.
+                let span_name = self.span()
+                    .map(|span| span.name())
+                    .ok_or_else(|| eyre!("No span in exit record"))?;
+                span_names.push(span_name.to_string());
+            }
+        }
+        Ok(SpanPath::new(span_names))
     }
 
     pub fn thread_id(&self) -> &str {
