@@ -1,0 +1,38 @@
+---
+source: dynamecs-analyze/tests/integration.rs
+expression: records_string
+---
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Working directory: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Logging text to stdout with log level info"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Logging text to file <redacted path> with log level trace"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Logging JSON to file <redacted path> with log level trace"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Archived log file path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Archived JSON log file path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Output base path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"No configuration specified. Using the empty document {} as default."},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Using configuration: \n{}"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Initializing scenario"},"target":"basic_app1","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"dynamecs_app","span":{"name":"run"},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Starting simulation of scenario \"basic_app1\""},"target":"dynamecs_app","span":{"name":"run"},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"dynamecs_app","span":{"name":"step","step_index":0},"spans":[{"name":"run"},{"name":"step","step_index":0}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"DEBUG","fields":{"message":"Running post-systems for initial state"},"target":"dynamecs_app","span":{"name":"step","step_index":0},"spans":[{"name":"run"},{"name":"step","step_index":0}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Starting step 0 at simulation time 0.00000 (dt = 1.00000e-1)"},"target":"dynamecs_app","span":{"name":"step","step_index":0},"spans":[{"name":"run"},{"name":"step","step_index":0}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"DEBUG","fields":{"answer":42,"message":"debug-test"},"target":"target1","span":{"name":"step","step_index":0},"spans":[{"name":"run"},{"name":"step","step_index":0}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"target1","span":{"name":"span1"},"spans":[{"name":"run"},{"name":"step","step_index":0},{"name":"span1"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":0},{"name":"span1"},{"name":"span2"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"TRACE","fields":{"message":"trace-test","question":"jeopardy"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":0},{"name":"span1"},{"name":"span2"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":0},{"name":"span1"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"target1","span":{"name":"span1"},"spans":[{"name":"run"},{"name":"step","step_index":0}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"dynamecs_app","span":{"name":"step","step_index":0},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"dynamecs_app","span":{"name":"step","step_index":1},"spans":[{"name":"run"},{"name":"step","step_index":1}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Starting step 1 at simulation time 0.10000 (dt = 1.00000e-1)"},"target":"dynamecs_app","span":{"name":"step","step_index":1},"spans":[{"name":"run"},{"name":"step","step_index":1}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"DEBUG","fields":{"answer":42,"message":"debug-test"},"target":"target1","span":{"name":"step","step_index":1},"spans":[{"name":"run"},{"name":"step","step_index":1}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"target1","span":{"name":"span1"},"spans":[{"name":"run"},{"name":"step","step_index":1},{"name":"span1"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":1},{"name":"span1"},{"name":"span2"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"TRACE","fields":{"message":"trace-test","question":"jeopardy"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":1},{"name":"span1"},{"name":"span2"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"target2","span":{"name":"span2"},"spans":[{"name":"run"},{"name":"step","step_index":1},{"name":"span1"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"target1","span":{"name":"span1"},"spans":[{"name":"run"},{"name":"step","step_index":1}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"dynamecs_app","span":{"name":"step","step_index":1},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Simulation ended"},"target":"dynamecs_app","span":{"name":"run"},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"exit"},"target":"dynamecs_app","span":{"name":"run"},"spans":[],"threadId":"ThreadId(0)"}
+

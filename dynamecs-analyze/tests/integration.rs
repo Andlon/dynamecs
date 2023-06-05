@@ -16,8 +16,8 @@ fn redact_message(msg: &str) -> String {
     let path_redactions = [
         // prefix, suffix
         ["Working directory: ", ""],
-        ["Logging text to file ", " with log level debug"],
-        ["Logging JSON to file ", " with log level debug"],
+        ["Logging text to file ", " with log level trace"],
+        ["Logging JSON to file ", " with log level trace"],
         ["Archived log file path: ", ""],
         ["Archived JSON log file path: ", ""],
         ["Output base path: ", ""],
@@ -41,7 +41,7 @@ fn redact_records(records: &[Record]) -> Vec<Record> {
         .cloned()
         .map(|record| {
             let message_override = record.message()
-                .map(|message| redact_message(message)); // TODO: Redact paths
+                .map(|message| redact_message(message));
 
             let mut builder = RecordBuilder::from_record(record)
                 .timestamp(arbitrary_timestamp)
@@ -64,14 +64,15 @@ fn test_expected_output_for_basic_app1() -> Result<(), Box<dyn std::error::Error
     let temp_dir = tempdir()?;
     let target_dir = temp_dir.path().join("target");
     let output_dir = temp_dir.path().join("output");
-    CargoBuild::new()
+    let _ = CargoBuild::new()
         .manifest_path("tests/test-apps/Cargo.toml")
         .bin("basic_app1")
         .target_dir(target_dir)
         .run()?
         .command()
         .args(["--output-dir", output_dir.to_str().unwrap()])
-        .status()?;
+        .args(["--file-log-level", "trace"])
+        .output()?;
 
     let records: Vec<_> = iterate_records(output_dir.join("logs/dynamecs_app.jsonlog"))?
         .map(|record_result| record_result.expect("The records are complete/correct for this test"))
