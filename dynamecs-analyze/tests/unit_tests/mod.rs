@@ -130,6 +130,7 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
                 .target("b")
                 .timestamp(next_date(Duration::seconds(1)))
                 .thread_id("1")
+                .message("message2")
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
                 .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
                 .build(),
@@ -138,6 +139,7 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
                 .target("b")
                 .timestamp(next_date(Duration::seconds(1)))
                 .thread_id("0")
+                .fields(json!( { "field1": 4, "field2": "value2" }))
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
                 .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
                 .build(),

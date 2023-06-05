@@ -19,7 +19,7 @@ pub use span_path::{SpanPath};
 mod span_tree;
 pub use span_tree::{SpanTree, SpanTreeNode, InvalidTreeLayout};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
     name: String,
     // TODO: Replace with Map<String, Value>, since we always expect it to be an object?
@@ -80,7 +80,7 @@ pub enum RecordKind {
     Event,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record {
     target: String,
     span: Option<Span>,
@@ -197,6 +197,20 @@ impl RecordBuilder {
         Self::default()
     }
 
+    pub fn from_record(record: Record) -> Self {
+        Self {
+            target: Some(record.target),
+            span: record.span,
+            level: Some(record.level),
+            spans: record.spans,
+            kind: Some(record.kind),
+            message: record.message,
+            timestamp: Some(record.timestamp),
+            thread_id: Some(record.thread_id),
+            fields: Some(record.fields),
+        }
+    }
+
     pub fn event() -> Self {
         Self {
             kind: Some(RecordKind::Event),
@@ -285,36 +299,47 @@ impl RecordBuilder {
 
     pub fn try_build(self) -> Result<Record, RecordBuildError> {
         let kind = self.kind.ok_or_else(|| RecordBuildError::missing_field("kind"))?;
+
+        let message = match kind {
+            RecordKind::SpanEnter => {
+                let msg_valid = self.message.map(|msg| msg == "enter").unwrap_or(true);
+                if !msg_valid {
+                    return Err(RecordBuildError::message(
+                        "span enter records cannot have \
+                             message other than \"enter\"".to_string()));
+                }
+                Some("enter".to_string())
+            },
+            RecordKind::SpanExit => {
+                let msg_valid = self.message.map(|msg| msg == "exit").unwrap_or(true);
+                if !msg_valid {
+                    return Err(RecordBuildError::message(
+                        "span exit records cannot have \
+                             message other than \"exit\"".to_string()));
+                }
+                Some("exit".to_string())
+            },
+            RecordKind::Event => { self.message }
+        };
+
         Ok(Record {
             target: self.target.ok_or_else(|| RecordBuildError::missing_field("target"))?,
             span: self.span,
             level: self.level.ok_or_else(|| RecordBuildError::missing_field("level"))?,
             spans: self.spans,
-            message: match kind {
-                RecordKind::SpanEnter => {
-                    let msg_valid = self.message.map(|msg| msg == "enter").unwrap_or(true);
-                    if !msg_valid {
-                        return Err(RecordBuildError::message(
-                            "span enter records cannot have \
-                             message other than \"enter\"".to_string()));
-                    }
-                    Some("enter".to_string())
-                },
-                RecordKind::SpanExit => {
-                    let msg_valid = self.message.map(|msg| msg == "exit").unwrap_or(true);
-                    if !msg_valid {
-                        return Err(RecordBuildError::message(
-                            "span exit records cannot have \
-                             message other than \"exit\"".to_string()));
-                    }
-                    Some("exit".to_string())
-                },
-                RecordKind::Event => { self.message }
-            },
             kind,
             timestamp: self.timestamp.ok_or_else(|| RecordBuildError::missing_field("timestamp"))?,
             thread_id: self.thread_id.ok_or_else(|| RecordBuildError::missing_field("thread_id"))?,
-            fields: self.fields.unwrap_or_else(|| serde_json::Value::Object(Map::default())),
+            fields: {
+                let mut fields = self.fields.unwrap_or_else(|| serde_json::Value::Object(Map::default()));
+                if let Some(message) = &message {
+                    fields.as_object_mut()
+                        .expect("Fields must be a JSON object")
+                        .insert("message".to_string(), serde_json::Value::String(message.clone()));
+                }
+                fields
+            },
+            message,
         })
     }
 
@@ -323,15 +348,15 @@ impl RecordBuilder {
     }
 }
 
-pub struct RecordIter {
-    lines_iter: Lines<BufReader<Box<dyn Read>>>,
+pub struct RecordIter<'a> {
+    lines_iter: Lines<BufReader<Box<dyn Read + 'a>>>,
 }
 
-pub fn iterate_records(json_log_file_path: impl AsRef<Path>) -> eyre::Result<RecordIter> {
+pub fn iterate_records(json_log_file_path: impl AsRef<Path>) -> eyre::Result<RecordIter<'static>> {
     iterate_records_(json_log_file_path.as_ref())
 }
 
-fn iterate_records_(json_log_file_path: &Path) -> eyre::Result<RecordIter> {
+fn iterate_records_(json_log_file_path: &Path) -> eyre::Result<RecordIter<'static>> {
     let file = File::open(json_log_file_path)?;
     let file_name = json_log_file_path.file_name()
         .and_then(OsStr::to_str)
@@ -345,11 +370,11 @@ fn iterate_records_(json_log_file_path: &Path) -> eyre::Result<RecordIter> {
     }
 }
 
-pub fn iterate_records_from_reader<R: Read + 'static>(reader: R) -> RecordIter {
+pub fn iterate_records_from_reader<'a, R: Read + 'a>(reader: R) -> RecordIter<'a> {
     iterate_records_from_reader_(BufReader::new(Box::new(reader)))
 }
 
-fn iterate_records_from_reader_(reader: BufReader<Box<dyn Read>>) -> RecordIter {
+fn iterate_records_from_reader_<'a>(reader: BufReader<Box<dyn Read + 'a>>) -> RecordIter<'a> {
     RecordIter {
         lines_iter: reader.lines()
     }
@@ -364,7 +389,7 @@ pub fn write_records(mut writer: impl Write, records: impl Iterator<Item=Record>
     Ok(())
 }
 
-impl Iterator for RecordIter {
+impl<'a> Iterator for RecordIter<'a> {
     // TODO: Use a proper error type here
     type Item = eyre::Result<Record>;
 

@@ -5,7 +5,7 @@ expression: records_string
 {"timestamp":"2023-02-22T08:00:00+02:00","level":"INFO","fields":{"message":"msg0"},"target":"a","threadId":"0"}
 {"timestamp":"2023-02-22T08:00:01+02:00","level":"TRACE","fields":{"message":"msg1"},"target":"a","threadId":"0"}
 {"timestamp":"2023-02-22T08:00:02+02:00","level":"INFO","fields":{"message":"enter"},"target":"b","span":{"name":"span1"},"spans":[{"name":"span1"}],"threadId":"0"}
-{"timestamp":"2023-02-22T08:00:03+02:00","level":"DEBUG","fields":{},"target":"b","span":{"name":"span1"},"spans":[{"name":"span1"}],"threadId":"1"}
-{"timestamp":"2023-02-22T08:00:04+02:00","level":"WARN","fields":{},"target":"b","span":{"name":"span1"},"spans":[{"name":"span1"}],"threadId":"0"}
+{"timestamp":"2023-02-22T08:00:03+02:00","level":"DEBUG","fields":{"message":"message2"},"target":"b","span":{"name":"span1"},"spans":[{"name":"span1"}],"threadId":"1"}
+{"timestamp":"2023-02-22T08:00:04+02:00","level":"WARN","fields":{"field1":4,"field2":"value2"},"target":"b","span":{"name":"span1"},"spans":[{"name":"span1"}],"threadId":"0"}
 {"timestamp":"2023-02-22T08:00:05+02:00","level":"INFO","fields":{"message":"exit"},"target":"b","span":{"name":"span1"},"threadId":"0"}
 
