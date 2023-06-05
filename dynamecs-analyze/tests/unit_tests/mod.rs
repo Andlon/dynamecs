@@ -1,7 +1,9 @@
+use std::error::Error;
 use serde_json::json;
 use time::format_description::well_known::Iso8601;
-use time::OffsetDateTime;
-use dynamecs_analyze::{iterate_records_from_reader, Level, Record, RecordKind};
+use time::{Date, Duration, OffsetDateTime, UtcOffset};
+use time::Month::February;
+use dynamecs_analyze::{iterate_records_from_reader, Level, Record, RecordBuilder, RecordKind, Span, write_records};
 
 /// Helper macro for succinctly creating a span path from a list of literals.
 macro_rules! span_path {
@@ -87,9 +89,59 @@ fn test_basic_records_iteration() {
 }
 
 #[test]
-fn test_write_records() {
+fn test_write_records() -> Result<(), Box<dyn Error>> {
+    let base_date = Date::from_calendar_date(2023, February, 22)?.with_hms(08, 00, 00)?
+        // Use a timezone different than UTC
+        .assume_offset(UtcOffset::from_hms(02, 00, 00).unwrap());
+
+    let mut next_date = base_date;
+    let mut next_date = |increment: Duration| {
+        next_date += increment;
+        next_date.clone()
+    };
+
     {
-        todo!()
+        let records = vec![
+            RecordBuilder::new()
+                .with_target("a")
+                .with_message("msg0")
+                .with_thread_id("0")
+                .with_kind(RecordKind::Event)
+                .with_level(Level::Info)
+                .with_timestamp(base_date)
+                .build(),
+            RecordBuilder::new()
+                .with_target("a")
+                .with_message("msg1")
+                .with_kind(RecordKind::Event)
+                .with_level(Level::Trace)
+                .with_timestamp(next_date(Duration::seconds(1)))
+                .with_thread_id("0")
+                .build(),
+            RecordBuilder::new()
+                .with_target("b")
+                .with_kind(RecordKind::SpanEnter)
+                .with_level(Level::Info)
+                .with_timestamp(next_date(Duration::seconds(1)))
+                .with_thread_id("0")
+                .with_span(Span::from_name_and_fields("span1", serde_json::Value::Object(Default::default())))
+                .with_spans(vec![Span::from_name_and_fields("span1", serde_json::Value::Object(Default::default()))])
+                .build(),
+            RecordBuilder::new()
+                .with_target("b")
+                .with_kind(RecordKind::SpanExit)
+                .with_level(Level::Info)
+                .with_timestamp(next_date(Duration::seconds(1)))
+                .with_thread_id("0")
+                .build()
+        ];
+
+        let mut records_bytes: Vec<u8> = Vec::new();
+        write_records(&mut records_bytes, records.into_iter())?;
+
+        // TODO: Use insta to verify that it looks as expected
+        println!("{}", String::from_utf8(records_bytes).unwrap());
     }
 
+    Ok(())
 }

@@ -22,10 +22,27 @@ pub use span_tree::{SpanTree, SpanTreeNode, InvalidTreeLayout};
 #[derive(Debug, Clone)]
 pub struct Span {
     name: String,
+    // TODO: Replace with Map<String, Value>, since we always expect it to be an object?
     fields: serde_json::Value
 }
 
 impl Span {
+    pub fn from_name_and_fields(name: impl Into<String>, fields: serde_json::Value) -> Self {
+        let mut fields = fields;
+        let name = name.into();
+        // fields must contain "name" as a field. Unfortunately tracing puts the name
+        // of the span and its fields in the same object, which might lead to collisions...
+        // The only way to fix this would be to use our own JSON format, which we will probably
+        // do some time in the future.
+        fields.as_object_mut()
+            .expect("fields must be a JSON object")
+            .insert("name".to_string(), serde_json::Value::String(name.clone()));
+        Self {
+            name,
+            fields
+        }
+    }
+
     fn try_from_json_value(value: serde_json::Value) -> eyre::Result<Self> {
         let name = value
             .as_object()
@@ -180,52 +197,52 @@ impl RecordBuilder {
         Self::default()
     }
 
-    pub fn with_target(&mut self, target: String) -> &mut Self {
-        self.target.replace(target);
+    pub fn with_target(mut self, target: impl Into<String>) -> Self {
+        self.target.replace(target.into());
         self
     }
 
-    pub fn with_span(&mut self, span: Span) -> &mut Self {
+    pub fn with_span(mut self, span: Span) -> Self {
         self.span.replace(span);
         self
     }
 
-    pub fn with_level(&mut self, level: Level) -> &mut Self {
+    pub fn with_level(mut self, level: Level) -> Self {
         self.level.replace(level);
         self
     }
 
-    pub fn with_spans(&mut self, spans: Vec<Span>) -> &mut Self {
+    pub fn with_spans(mut self, spans: Vec<Span>) -> Self {
         self.spans.replace(spans);
         self
     }
 
-    pub fn with_kind(&mut self, kind: RecordKind) -> &mut Self {
+    pub fn with_kind(mut self, kind: RecordKind) -> Self {
         self.kind.replace(kind);
         self
     }
 
-    pub fn with_message(&mut self, message: String) -> &mut Self {
-        self.message.replace(message);
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message.replace(message.into());
         self
     }
 
-    pub fn with_timestamp(&mut self, timestamp: OffsetDateTime) -> &mut Self {
+    pub fn with_timestamp(mut self, timestamp: OffsetDateTime) -> Self {
         self.timestamp.replace(timestamp);
         self
     }
 
-    pub fn with_thread_id(&mut self, thread_id: String) -> &mut Self {
-        self.thread_id.replace(thread_id);
+    pub fn with_thread_id(mut self, thread_id: impl Into<String>) -> Self {
+        self.thread_id.replace(thread_id.into());
         self
     }
 
-    pub fn with_fields(&mut self, fields: serde_json::Value) -> &mut Self {
+    pub fn with_fields(mut self, fields: serde_json::Value) -> Self {
         self.fields.replace(fields);
         self
     }
 
-    pub fn build(self) -> Result<Record, RecordBuildError> {
+    pub fn try_build(self) -> Result<Record, RecordBuildError> {
         let kind = self.kind.ok_or_else(|| RecordBuildError::missing_field("kind"))?;
         Ok(Record {
             target: self.target.ok_or_else(|| RecordBuildError::missing_field("target"))?,
@@ -258,6 +275,10 @@ impl RecordBuilder {
             thread_id: self.thread_id.ok_or_else(|| RecordBuildError::missing_field("thread_id"))?,
             fields: self.fields.unwrap_or_else(|| serde_json::Value::Object(Map::default())),
         })
+    }
+
+    pub fn build(self) -> Record {
+        self.try_build().unwrap()
     }
 }
 
@@ -334,7 +355,9 @@ struct RawRecord {
     level: String,
     fields: serde_json::Value,
     target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     span: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     spans: Option<Vec<serde_json::Value>>,
     #[serde(rename="threadId")]
     thread_id: String,
@@ -430,3 +453,15 @@ impl ToString for Level {
         }.to_string()
     }
 }
+
+// #[macro_export]
+// macro_rules! record {
+//     ($)
+//     // ($($field:ident = $val:expr),*) => {
+//     //     {
+//     //         $crate::RecordBuilder::new()
+//     //             $(.with_$field($val))*
+//     //             .build()
+//     //     }
+//     // }
+// }
