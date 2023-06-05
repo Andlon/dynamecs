@@ -1,5 +1,6 @@
 use std::error::Error;
 use serde_json::json;
+use serde_json::Value::Object;
 use time::format_description::well_known::Iso8601;
 use time::{Date, Duration, OffsetDateTime, UtcOffset};
 use time::Month::February;
@@ -102,45 +103,58 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
 
     {
         let records = vec![
-            RecordBuilder::new()
-                .with_target("a")
-                .with_message("msg0")
-                .with_thread_id("0")
-                .with_kind(RecordKind::Event)
-                .with_level(Level::Info)
-                .with_timestamp(base_date)
+            RecordBuilder::event()
+                .info()
+                .target("a")
+                .message("msg0")
+                .thread_id("0")
+                .timestamp(base_date)
                 .build(),
-            RecordBuilder::new()
-                .with_target("a")
-                .with_message("msg1")
-                .with_kind(RecordKind::Event)
-                .with_level(Level::Trace)
-                .with_timestamp(next_date(Duration::seconds(1)))
-                .with_thread_id("0")
+            RecordBuilder::event()
+                .trace()
+                .target("a")
+                .message("msg1")
+                .timestamp(next_date(Duration::seconds(1)))
+                .thread_id("0")
                 .build(),
-            RecordBuilder::new()
-                .with_target("b")
-                .with_kind(RecordKind::SpanEnter)
-                .with_level(Level::Info)
-                .with_timestamp(next_date(Duration::seconds(1)))
-                .with_thread_id("0")
-                .with_span(Span::from_name_and_fields("span1", serde_json::Value::Object(Default::default())))
-                .with_spans(vec![Span::from_name_and_fields("span1", serde_json::Value::Object(Default::default()))])
+            RecordBuilder::span_enter()
+                .info()
+                .target("b")
+                .timestamp(next_date(Duration::seconds(1)))
+                .thread_id("0")
+                .span(Span::from_name_and_fields("span1", Object(Default::default())))
+                .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
                 .build(),
-            RecordBuilder::new()
-                .with_target("b")
-                .with_kind(RecordKind::SpanExit)
-                .with_level(Level::Info)
-                .with_timestamp(next_date(Duration::seconds(1)))
-                .with_thread_id("0")
+            RecordBuilder::event()
+                .debug()
+                .target("b")
+                .timestamp(next_date(Duration::seconds(1)))
+                .thread_id("1")
+                .span(Span::from_name_and_fields("span1", Object(Default::default())))
+                .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
+                .build(),
+            RecordBuilder::event()
+                .warn()
+                .target("b")
+                .timestamp(next_date(Duration::seconds(1)))
+                .thread_id("0")
+                .span(Span::from_name_and_fields("span1", Object(Default::default())))
+                .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
+                .build(),
+            RecordBuilder::span_exit()
+                .info()
+                .target("b")
+                .timestamp(next_date(Duration::seconds(1)))
+                .thread_id("0")
+                .span(Span::from_name_and_fields("span1", Object(Default::default())))
                 .build()
         ];
 
         let mut records_bytes: Vec<u8> = Vec::new();
         write_records(&mut records_bytes, records.into_iter())?;
+        let records_string = String::from_utf8(records_bytes).unwrap();
 
-        // TODO: Use insta to verify that it looks as expected
-        println!("{}", String::from_utf8(records_bytes).unwrap());
+        insta::assert_snapshot!(records_string);
     }
 
     Ok(())

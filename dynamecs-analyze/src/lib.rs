@@ -197,47 +197,88 @@ impl RecordBuilder {
         Self::default()
     }
 
-    pub fn with_target(mut self, target: impl Into<String>) -> Self {
+    pub fn event() -> Self {
+        Self {
+            kind: Some(RecordKind::Event),
+            .. Self::default()
+        }
+    }
+
+    pub fn span_enter() -> Self {
+        Self {
+            kind: Some(RecordKind::SpanEnter),
+            .. Self::default()
+        }
+    }
+
+    pub fn span_exit() -> Self {
+        Self {
+            kind: Some(RecordKind::SpanExit),
+            .. Self::default()
+        }
+    }
+
+    pub fn info(self) -> Self {
+        Self { level: Some(Level::Info), .. self }
+    }
+
+    pub fn warn(self) -> Self {
+        Self { level: Some(Level::Warn), .. self }
+    }
+
+    pub fn debug(self) -> Self {
+        Self { level: Some(Level::Debug), .. self }
+    }
+
+    pub fn trace(self) -> Self {
+        Self { level: Some(Level::Trace), .. self }
+    }
+
+    pub fn error(self) -> Self {
+        Self { level: Some(Level::Error), .. self }
+    }
+
+    pub fn target(mut self, target: impl Into<String>) -> Self {
         self.target.replace(target.into());
         self
     }
 
-    pub fn with_span(mut self, span: Span) -> Self {
+    pub fn span(mut self, span: Span) -> Self {
         self.span.replace(span);
         self
     }
 
-    pub fn with_level(mut self, level: Level) -> Self {
+    pub fn level(mut self, level: Level) -> Self {
         self.level.replace(level);
         self
     }
 
-    pub fn with_spans(mut self, spans: Vec<Span>) -> Self {
+    pub fn spans(mut self, spans: Vec<Span>) -> Self {
         self.spans.replace(spans);
         self
     }
 
-    pub fn with_kind(mut self, kind: RecordKind) -> Self {
+    pub fn kind(mut self, kind: RecordKind) -> Self {
         self.kind.replace(kind);
         self
     }
 
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub fn message(mut self, message: impl Into<String>) -> Self {
         self.message.replace(message.into());
         self
     }
 
-    pub fn with_timestamp(mut self, timestamp: OffsetDateTime) -> Self {
+    pub fn timestamp(mut self, timestamp: OffsetDateTime) -> Self {
         self.timestamp.replace(timestamp);
         self
     }
 
-    pub fn with_thread_id(mut self, thread_id: impl Into<String>) -> Self {
+    pub fn thread_id(mut self, thread_id: impl Into<String>) -> Self {
         self.thread_id.replace(thread_id.into());
         self
     }
 
-    pub fn with_fields(mut self, fields: serde_json::Value) -> Self {
+    pub fn fields(mut self, fields: serde_json::Value) -> Self {
         self.fields.replace(fields);
         self
     }
@@ -350,7 +391,7 @@ impl Iterator for RecordIter {
 struct RawRecord {
     // TODO: Consider replacing time with Chrono. From my understanding, only Chrono
     // properly and soundly works with local time on Linux
-    #[serde(with = "time::serde::iso8601")]
+    #[serde(with = "time::serde::rfc3339")]
     timestamp: OffsetDateTime,
     level: String,
     fields: serde_json::Value,
@@ -387,10 +428,25 @@ impl RawRecord {
     }
 
     fn from_record(record: Record) -> Self {
+        let mut fields = record.fields;
+
+        let mut message = record.message;
+        match record.kind {
+            RecordKind::SpanEnter => { message.replace("enter".to_string()); },
+            RecordKind::SpanExit => { message.replace("exit".to_string()); },
+            RecordKind::Event => {}
+        }
+
+        if let Some(message) = message {
+            fields.as_object_mut()
+                .expect("Fields must always have object type")
+                .insert("message".to_string(), Value::String(message));
+        }
+
         Self {
             timestamp: record.timestamp,
-            level: record.level().to_string(),
-            fields: record.fields,
+            level: record.level.to_string(),
+            fields,
             target: record.target,
             span: record.span.map(|span| span.to_json_value()),
             spans: record.spans.map(|spans| spans.into_iter().map(|span| span.to_json_value()).collect()),
