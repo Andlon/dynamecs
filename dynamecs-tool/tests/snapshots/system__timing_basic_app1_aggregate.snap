@@ -1,0 +1,18 @@
+---
+source: dynamecs-tool/tests/system.rs
+expression: stdout_str
+---
+Aggregate timings
+════════════════════════════════
+
+  Total      Average    Count  Rel parent  Rel root  Span                     
+  ═════════════════════════════════════════════════════════════════════════════
+     1.1 ms     1.1 ms      1         N/A   100.0 %  run                      
+   763.0 μs   381.5 μs      2      69.6 %    69.6 %  └── step                 
+   240.0 μs   120.0 μs      2      31.5 %    21.9 %      └── span1            
+    76.0 μs    38.0 μs      2      31.7 %     6.9 %          └── span2        
+  ═════════════════════════════════════════════════════════════════════════════
+
+
+Number of completed time steps: 2
+

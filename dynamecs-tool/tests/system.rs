@@ -31,3 +31,30 @@ fn test_timing_basic_app1_all_steps() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[test]
+fn test_timing_basic_app1_aggregate() -> Result<(), Box<dyn Error>> {
+    // Same as "all_steps" test, but only using the aggregate
+
+    let temp_dir = tempdir()?;
+    let target_dir = temp_dir.path().join("target");
+
+    // Then run dynamecs-tool
+    let output = CargoBuild::new()
+        .bin("dynamecs-tool")
+        .target_dir(target_dir)
+        .run()?
+        .command()
+        .arg("timing")
+        .args(["--logfile", "tests/test_logs/dynamecs_app.jsonlog"])
+        .arg("--aggregate")
+        .output()?;
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout_str = String::from_utf8(output.stdout)?;
+    insta::assert_snapshot!(stdout_str);
+
+    Ok(())
+}
