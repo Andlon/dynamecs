@@ -74,7 +74,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build all tests and examples
-        run: cargo build --workspace --all-targets
+      - name: Build everything
+        run: cargo build --workspace --all-targets --all-features
       - name: Run all tests and examples
-        run: cargo test --workspace --tests
+        run: cargo test --workspace --all-targets
