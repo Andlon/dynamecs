@@ -65,7 +65,7 @@ fn test_expected_output_for_basic_app1() -> Result<(), Box<dyn std::error::Error
     let target_dir = temp_dir.path().join("target");
     let output_dir = temp_dir.path().join("output");
     let _ = CargoBuild::new()
-        .manifest_path("tests/test-apps/Cargo.toml")
+        .manifest_path("../test-apps/Cargo.toml")
         .bin("basic_app1")
         .target_dir(target_dir)
         .run()?
