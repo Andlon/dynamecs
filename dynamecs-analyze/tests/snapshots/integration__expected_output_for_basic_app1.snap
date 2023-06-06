@@ -9,7 +9,7 @@ expression: records_string
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Archived log file path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Archived JSON log file path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Output base path: <redacted path>"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
-{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"No configuration specified. Using the empty document {} as default."},"target":"dynamecs_app","threadId":"ThreadId(0)"}
+{"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"No configuration specified. Trying to use the empty document {} as default."},"target":"dynamecs_app","threadId":"ThreadId(0)"}
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Using configuration: \n{}"},"target":"dynamecs_app","threadId":"ThreadId(0)"}
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"Initializing scenario"},"target":"basic_app1","threadId":"ThreadId(0)"}
 {"timestamp":"2000-11-14T08:00:00+02:00","level":"INFO","fields":{"message":"enter"},"target":"dynamecs_app","span":{"name":"run"},"spans":[{"name":"run"}],"threadId":"ThreadId(0)"}
