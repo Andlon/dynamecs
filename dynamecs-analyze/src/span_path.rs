@@ -18,6 +18,11 @@ impl SpanPath {
         self.span_names.as_ref()
     }
 
+    /// The number of span names that make up this span path.
+    pub fn depth(&self) -> usize {
+        self.span_names.len()
+    }
+
     pub fn parent(&self) -> Option<SpanPath> {
         let n = self.span_names().len();
         (n > 0).then(|| SpanPath::new(self.span_names[0 .. (n - 1)].to_vec()))

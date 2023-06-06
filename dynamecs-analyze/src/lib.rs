@@ -17,7 +17,7 @@ mod span_path;
 pub use span_path::{SpanPath};
 
 mod span_tree;
-pub use span_tree::{SpanTree, SpanTreeNode, InvalidTreeLayout};
+pub use span_tree::{SpanTree, SpanTreeNode};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {

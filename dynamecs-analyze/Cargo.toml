@@ -10,6 +10,7 @@ flate2 = "1.0.25"
 time = { version = "0.3.20", features = ["serde", "parsing", "formatting"] }
 # TODO: Introduce proper error types instead of using eyre
 eyre = "0.6.8"
+itertools = "0.10.5"
 
 [dev-dependencies]
 insta = "1.29.0"

@@ -1,6 +1,5 @@
-
-use std::fmt::{Debug, Formatter};
-
+use std::fmt::{Debug, Display, Formatter};
+use itertools::izip;
 use crate::SpanPath;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,11 +11,23 @@ pub struct SpanTree<Payload> {
     // relevant indices
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum InvalidTreeLayout {
-    Empty,
-    NotDepthFirst,
-    NotTree,
+#[derive(Debug, Clone)]
+pub struct SpanTreeError {
+    message: String,
+}
+
+impl Display for SpanTreeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for SpanTreeError {}
+
+impl SpanTreeError {
+    fn message(message: impl Into<String>) -> Self {
+        Self { message: message.into() }
+    }
 }
 
 impl<Payload> SpanTree<Payload> {
@@ -31,27 +42,45 @@ impl<Payload> SpanTree<Payload> {
         }
     }
 
-    pub fn try_from_depth_first(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Result<Self, InvalidTreeLayout> {
-        assert_eq!(paths.len(), payloads.len());
+    pub fn try_from_depth_first_ordering(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Result<Self, SpanTreeError> {
+        let (root, others) = paths.split_first()
+            // TODO: Should we support empty trees?
+            .ok_or_else(|| SpanTreeError::message("there must be at least one path in the tree"))?;
+        let mut stack = Vec::new();
+        for name in root.span_names() {
+            stack.push(name.as_str());
+        }
 
-        let (root, other_paths) = paths.split_first().ok_or_else(|| InvalidTreeLayout::Empty)?;
-        for path in other_paths {
-            if !root.is_ancestor_of(path) {
-                return Err(InvalidTreeLayout::NotTree);
+        for path in others {
+            let num_common_names = izip!(&stack, path.span_names())
+                .take_while(|(&stack_name, path_name)| stack_name == path_name.as_str())
+                .count();
+
+            if num_common_names < root.depth() {
+                return Err(SpanTreeError::message("first path is not an ancestor of all other nodes"));
+            }
+
+            stack.truncate(num_common_names);
+
+            if path.depth() > num_common_names + 1 {
+                return Err(SpanTreeError::message("intermediate nodes missing"));
+            } else if path.depth() == num_common_names + 1 {
+                stack.push(path.span_name().unwrap());
+            } else if path.depth() == num_common_names {
+                return Err(SpanTreeError::message("duplicate paths detected"));
+            } else if path.depth() < num_common_names {
+                unreachable!()
             }
         }
 
-        // for pair in paths.windows(2) {
-        //     let [path1, path2]: &[SpanPath; 2] = pair.try_into().unwrap();
-        //     if path1.
-        //         return Err(InvalidTreeLayout::NotDepthFirst)
-        //     }
-        // }
-        Ok(Self { tree_depth_first: paths, payloads })
+        assert_eq!(paths.len(), payloads.len());
+        Ok(Self {
+            tree_depth_first: paths,
+            payloads
+        })
     }
 
     pub fn from_paths_and_payloads(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Self {
-        // TODO: Verify that we have a tree, not a forest!!!
         assert_eq!(paths.len(), payloads.len());
         let mut path_payload_pairs: Vec<_> = paths.into_iter()
             .zip(payloads)
