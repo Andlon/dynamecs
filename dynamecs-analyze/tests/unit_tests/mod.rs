@@ -89,17 +89,37 @@ fn test_basic_records_iteration() {
     }
 }
 
+pub struct IncrementalTimestamp {
+    timestamp: OffsetDateTime
+}
+
+impl IncrementalTimestamp {
+    pub fn current(&self) -> OffsetDateTime {
+        self.timestamp
+    }
+
+    /// Advance the time by the given duration and return the result.
+    pub fn advance_by(&mut self, duration: Duration) -> OffsetDateTime {
+        self.timestamp += duration;
+        self.timestamp
+    }
+}
+
+impl Default for IncrementalTimestamp {
+    fn default() -> Self {
+        let base_date = Date::from_calendar_date(2023, February, 22)
+            .unwrap()
+            .with_hms(08, 00, 00)
+            .unwrap()
+            // Use a timezone different than UTC
+            .assume_offset(UtcOffset::from_hms(02, 00, 00).unwrap());
+        Self { timestamp: base_date }
+    }
+}
+
 #[test]
 fn test_write_records() -> Result<(), Box<dyn Error>> {
-    let base_date = Date::from_calendar_date(2023, February, 22)?.with_hms(08, 00, 00)?
-        // Use a timezone different than UTC
-        .assume_offset(UtcOffset::from_hms(02, 00, 00).unwrap());
-
-    let mut next_date = base_date;
-    let mut next_date = |increment: Duration| {
-        next_date += increment;
-        next_date.clone()
-    };
+    let mut next_date = IncrementalTimestamp::default();
 
     {
         let records = vec![
@@ -108,19 +128,19 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
                 .target("a")
                 .message("msg0")
                 .thread_id("0")
-                .timestamp(base_date)
+                .timestamp(next_date.current())
                 .build(),
             RecordBuilder::event()
                 .trace()
                 .target("a")
                 .message("msg1")
-                .timestamp(next_date(Duration::seconds(1)))
+                .timestamp(next_date.advance_by(Duration::seconds(1)))
                 .thread_id("0")
                 .build(),
             RecordBuilder::span_enter()
                 .info()
                 .target("b")
-                .timestamp(next_date(Duration::seconds(1)))
+                .timestamp(next_date.advance_by(Duration::seconds(1)))
                 .thread_id("0")
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
                 .spans(vec![Span::from_name_and_fields("span1", Object(Default::default()))])
@@ -128,7 +148,7 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
             RecordBuilder::event()
                 .debug()
                 .target("b")
-                .timestamp(next_date(Duration::seconds(1)))
+                .timestamp(next_date.advance_by(Duration::seconds(1)))
                 .thread_id("1")
                 .message("message2")
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
@@ -137,7 +157,7 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
             RecordBuilder::event()
                 .warn()
                 .target("b")
-                .timestamp(next_date(Duration::seconds(1)))
+                .timestamp(next_date.advance_by(Duration::seconds(1)))
                 .thread_id("0")
                 .fields(json!( { "field1": 4, "field2": "value2" }))
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
@@ -146,7 +166,7 @@ fn test_write_records() -> Result<(), Box<dyn Error>> {
             RecordBuilder::span_exit()
                 .info()
                 .target("b")
-                .timestamp(next_date(Duration::seconds(1)))
+                .timestamp(next_date.advance_by(Duration::seconds(1)))
                 .thread_id("0")
                 .span(Span::from_name_and_fields("span1", Object(Default::default())))
                 .build()

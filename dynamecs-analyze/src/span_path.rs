@@ -63,8 +63,11 @@ impl SpanPath {
 
 impl Display for SpanPath {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for name in self.span_names() {
-            write!(f, "{} > ", name)?;
+        if let Some((first, rest)) = self.span_names().split_first() {
+            write!(f, "{first}")?;
+            for name in rest {
+                write!(f, ">{}", name)?;
+            }
         }
         Ok(())
     }

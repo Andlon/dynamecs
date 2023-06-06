@@ -1,0 +1,13 @@
+---
+source: dynamecs-analyze/tests/unit_tests/timing.rs
+expression: format_timing_tree(&tree1)
+---
+Total     Average   Count  Rel parent  Rel root  Span                      
+════════════════════════════════════════════════════════════════════════════
+ 15.0 s    15.0 s       1         N/A   100.0 %  step                      
+ 12.0 s    12.0 s       1      80.0 %    80.0 %  └── simulate              
+  5.0 s     2.5 s       2      41.7 %    33.3 %      ├── assemble          
+  4.0 s     4.0 s       1      33.3 %    26.7 %      ├── occasional        
+  2.0 s     2.0 s       1      16.7 %    13.3 %      └── solve             
+════════════════════════════════════════════════════════════════════════════
+

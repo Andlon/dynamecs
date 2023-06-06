@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::collections::{HashMap};
+use std::collections::hash_map::Entry;
 use std::time::Duration;
 use eyre::eyre;
 use time::OffsetDateTime;
@@ -398,10 +399,14 @@ impl TimingAccumulator {
     }
 
     pub fn enter_span(&mut self, path: SpanPath, timestamp: OffsetDateTime) -> eyre::Result<()> {
-        if self.enter_timestamps.insert(path, timestamp).is_some() {
-            return Err(eyre!("tried to create new span that is already active (not closed)"));
+        match self.enter_timestamps.entry(path) {
+            Entry::Vacant(vacancy) => {
+                vacancy.insert(timestamp);
+                Ok(())
+            },
+            Entry::Occupied(old) => Err(eyre!("tried to create new span {} that is already active\
+                                               (not closed)", old.key())),
         }
-        Ok(())
     }
 
     pub fn exit_span(&mut self, path: SpanPath, timestamp_close: OffsetDateTime) -> eyre::Result<()> {
