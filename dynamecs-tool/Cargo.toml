@@ -6,8 +6,6 @@ edition = "2021"
 [dependencies]
 clap = { version="4.3.0", features = [ "derive" ] }
 dynamecs-analyze = { path = "../dynamecs-analyze" }
-# TODO: Remove?
-tabwriter = "1.2.1"
 
 [dev-dependencies]
 insta = "1.29.0"
