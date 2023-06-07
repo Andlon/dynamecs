@@ -2,10 +2,12 @@
 name = "dynamecs-tool"
 version = "0.1.0"
 edition = "2021"
+description = "CLI tool for processing dynamecs-app log files"
+license = "MIT"
 
 [dependencies]
 clap = { version="4.3.0", features = [ "derive" ] }
-dynamecs-analyze = { path = "../dynamecs-analyze" }
+dynamecs-analyze = { version = "0.0.1", path = "../dynamecs-analyze" }
 
 [dev-dependencies]
 insta = "1.29.0"
