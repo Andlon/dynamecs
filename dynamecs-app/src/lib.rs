@@ -165,7 +165,10 @@ impl<Config> DynamecsApp<Config> {
                     // For example, a system that outputs data after every simulation step should
                     // also output the initial state
                     debug!("Running post-systems for initial state");
-                    scenario.post_systems.run_all(state)?;
+                    {
+                        let _span = info_span!("post_systems").entered();
+                        scenario.post_systems.run_all(state)?;
+                    }
                 }
 
                 // TODO: Use some more better formatting here...
@@ -173,14 +176,23 @@ impl<Config> DynamecsApp<Config> {
                     "Starting step {} at simulation time {:3.5} (dt = {:3.5e})",
                     step_index, sim_time, dt
                 );
-                scenario.pre_systems.run_all(state)?;
-                scenario.simulation_systems.run_all(state)?;
+                {
+                    let _span = info_span!("pre_systems").entered();
+                    scenario.pre_systems.run_all(state)?;
+                }
+                {
+                    let _span = info_span!("simulation_systems").entered();
+                    scenario.simulation_systems.run_all(state)?;
+                }
 
                 sim_time += dt;
                 set_singular_component(state, SimulationTime(sim_time));
                 set_singular_component(state, StepIndex(step_index + 1));
 
-                scenario.post_systems.run_all(state)?;
+                {
+                    let _span = info_span!("post_systems").entered();
+                    scenario.post_systems.run_all(state)?;
+                }
 
                 if let Some(checkpoint_system) = &mut self.checkpoint_system {
                     checkpoint_system
