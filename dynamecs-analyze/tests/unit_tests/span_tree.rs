@@ -12,7 +12,7 @@ fn span_tree_valid_trees() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     {
-        let paths = vec![ SpanPath::new(vec![]) ];
+        let paths = vec![SpanPath::new(vec![])];
         let payloads = vec![0];
         let tree = SpanTree::try_from_depth_first_ordering(paths, payloads)?;
         let root = tree.root().unwrap();
@@ -22,20 +22,24 @@ fn span_tree_valid_trees() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     {
-        let paths = vec![ span_path!("a", "b"),
-                          span_path!("a", "b", "c"),
-                          span_path!("a", "b", "d"),
-                          span_path!("a", "b", "d", "e")];
-        let payloads = vec![ "ab", "abc", "abd", "abde" ];
+        let paths = vec![
+            span_path!("a", "b"),
+            span_path!("a", "b", "c"),
+            span_path!("a", "b", "d"),
+            span_path!("a", "b", "d", "e"),
+        ];
+        let payloads = vec!["ab", "abc", "abd", "abde"];
         let tree = SpanTree::try_from_depth_first_ordering(paths, payloads)?;
         let ab = tree.root().unwrap();
         assert_eq!(ab.payload(), &"ab");
         assert_eq!(ab.count_children(), 2);
 
-        let abc = ab.visit_children()
+        let abc = ab
+            .visit_children()
             .find(|node| node.path() == span_path!("a", "b", "c"))
             .unwrap();
-        let abd = ab.visit_children()
+        let abd = ab
+            .visit_children()
             .find(|node| node.path() == span_path!("a", "b", "d"))
             .unwrap();
         assert_eq!(abc.count_children(), 0);
@@ -54,37 +58,37 @@ fn span_tree_valid_trees() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn span_tree_invalid_trees() {
     {
-        let paths = vec![ span_path!("a"), span_path!("b") ];
+        let paths = vec![span_path!("a"), span_path!("b")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }
 
     {
-        let paths = vec![ span_path!("a"), span_path!("a", "b", "c") ];
+        let paths = vec![span_path!("a"), span_path!("a", "b", "c")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }
 
     {
-        let paths = vec![ span_path!("a"), span_path!("a") ];
+        let paths = vec![span_path!("a"), span_path!("a")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }
 
     {
-        let paths = vec![ span_path!("a"), span_path!("a", "b"), span_path!("c") ];
+        let paths = vec![span_path!("a"), span_path!("a", "b"), span_path!("c")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }
 
     {
-        let paths = vec![ span_path!("a"), span_path!("a") ];
+        let paths = vec![span_path!("a"), span_path!("a")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }
 
     {
-        let paths = vec![ span_path!("b"), span_path!("a") ];
+        let paths = vec![span_path!("b"), span_path!("a")];
         let payloads = vec![(); paths.len()];
         assert!(SpanTree::try_from_depth_first_ordering(paths, payloads).is_err());
     }

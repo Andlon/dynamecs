@@ -1,5 +1,5 @@
-use std::error::Error;
 use escargot::CargoBuild;
+use std::error::Error;
 use tempfile::tempdir;
 
 #[test]

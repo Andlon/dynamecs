@@ -1,9 +1,9 @@
-use std::error::Error;
+use clap::{Parser, Subcommand};
 use dynamecs_analyze::iterate_records;
 use dynamecs_analyze::timing::{extract_step_timings, format_timing_tree};
+use std::error::Error;
 use std::fmt::Write;
 use std::path::PathBuf;
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 struct Cli {
@@ -50,8 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Aggregate timings");
             println!("════════════════════════════════");
             println!();
-            let prefixed_summary_tree = add_prefix_to_multiline_string(
-                &format_timing_tree(&summary_tree), "  ");
+            let prefixed_summary_tree = add_prefix_to_multiline_string(&format_timing_tree(&summary_tree), "  ");
             println!("{prefixed_summary_tree}");
             println!();
             println!("Number of completed time steps: {}", timings.steps().len());

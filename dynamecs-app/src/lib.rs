@@ -159,7 +159,6 @@ impl<Config> DynamecsApp<Config> {
                 // so that we don't get an additional step span in the logs
                 let _span = info_span!("step", step_index).entered();
 
-
                 if step_index == 0 {
                     // Post systems must run on the initial state in order to do post-initialization
                     // For example, a system that outputs data after every simulation step should

@@ -25,24 +25,25 @@ impl SpanPath {
 
     pub fn parent(&self) -> Option<SpanPath> {
         let n = self.span_names().len();
-        (n > 0).then(|| SpanPath::new(self.span_names[0 .. (n - 1)].to_vec()))
+        (n > 0).then(|| SpanPath::new(self.span_names[0..(n - 1)].to_vec()))
     }
 
     pub fn is_parent_of(&self, other: &SpanPath) -> bool {
-        let n = self.span_names()
+        let n = self
+            .span_names()
             .iter()
             .zip(other.span_names())
             .take_while(|(self_name, other_name)| self_name == other_name)
             .count();
-        n == self.span_names().len()
-            && n + 1 == other.span_names().len()
+        n == self.span_names().len() && n + 1 == other.span_names().len()
     }
 
     /// Determines if this path is an ancestor of another path.
     ///
     /// A path is an ancestor of itself.
     pub fn is_ancestor_of(&self, other: &SpanPath) -> bool {
-        let n = self.span_names()
+        let n = self
+            .span_names()
             .iter()
             .zip(other.span_names())
             .take_while(|(self_name, other_name)| self_name == other_name)
@@ -54,7 +55,8 @@ impl SpanPath {
     ///
     /// A path is an ancestor of itself.
     pub fn common_ancestor(&self, other: &SpanPath) -> SpanPath {
-        let common_span_names = self.span_names()
+        let common_span_names = self
+            .span_names()
             .iter()
             .zip(other.span_names())
             .map_while(|(self_name, other_name)| (self_name == other_name).then(|| self_name))

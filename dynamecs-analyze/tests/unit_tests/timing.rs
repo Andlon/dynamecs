@@ -1,9 +1,9 @@
-use std::error::Error;
-use serde_json::json;
-use time::Duration;
-use dynamecs_analyze::{Record, RecordBuilder, Span};
-use dynamecs_analyze::timing::{extract_step_timings, format_timing_tree};
 use crate::unit_tests::IncrementalTimestamp;
+use dynamecs_analyze::timing::{extract_step_timings, format_timing_tree};
+use dynamecs_analyze::{Record, RecordBuilder, Span};
+use serde_json::json;
+use std::error::Error;
+use time::Duration;
 
 fn synthetic_records1() -> Vec<Record> {
     let mut next_date = IncrementalTimestamp::default();
@@ -210,9 +210,10 @@ fn synthetic_records1() -> Vec<Record> {
             .timestamp(next_date.advance_by(Duration::seconds(1)))
             .span(run())
             .target("dynamecs_app"),
-    ].into_iter()
-        .map(|builder| builder.thread_id("ThreadId(0)").build())
-        .collect()
+    ]
+    .into_iter()
+    .map(|builder| builder.thread_id("ThreadId(0)").build())
+    .collect()
 }
 
 #[test]

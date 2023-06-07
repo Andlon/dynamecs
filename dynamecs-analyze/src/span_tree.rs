@@ -1,6 +1,6 @@
-use std::fmt::{Debug, Display, Formatter};
-use itertools::izip;
 use crate::SpanPath;
+use itertools::izip;
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpanTree<Payload> {
@@ -26,7 +26,9 @@ impl std::error::Error for SpanTreeError {}
 
 impl SpanTreeError {
     fn message(message: impl Into<String>) -> Self {
-        Self { message: message.into() }
+        Self {
+            message: message.into(),
+        }
     }
 }
 
@@ -54,7 +56,9 @@ impl<Payload> SpanTree<Payload> {
 
                 stack.truncate(num_common_names);
                 if num_common_names < root.depth() {
-                    return Err(SpanTreeError::message("first path is not an ancestor of all other nodes"));
+                    return Err(SpanTreeError::message(
+                        "first path is not an ancestor of all other nodes",
+                    ));
                 }
 
                 if path.depth() > num_common_names + 1 {
@@ -64,31 +68,34 @@ impl<Payload> SpanTree<Payload> {
                 } else if path.depth() == num_common_names {
                     return Err(SpanTreeError::message("duplicate paths detected"));
                 } else {
-                    unreachable!("by definition, path depth cannot be smaller \
-                              than the number of common span names")
+                    unreachable!(
+                        "by definition, path depth cannot be smaller \
+                              than the number of common span names"
+                    )
                 }
             }
         }
 
-
         assert_eq!(paths.len(), payloads.len());
         Ok(Self {
             tree_depth_first: paths,
-            payloads
+            payloads,
         })
     }
 
     /// Return an identical tree in which the payload associated with each node
     /// is transformed by the provided transformation function.
-    pub fn transform_payloads<Payload2>(&mut self,
-                                        transform: impl FnMut(SpanTreeNode<Payload>) -> Payload2)
-        -> SpanTree<Payload2> {
-        let new_payloads: Vec<_> = (0 .. self.tree_depth_first.len())
+    pub fn transform_payloads<Payload2>(
+        &mut self,
+        transform: impl FnMut(SpanTreeNode<Payload>) -> Payload2,
+    ) -> SpanTree<Payload2> {
+        let new_payloads: Vec<_> = (0..self.tree_depth_first.len())
             .map(|i| SpanTreeNode {
                 tree_depth_first: &self.tree_depth_first,
                 payloads: &self.payloads,
                 index: i,
-            }).map(transform)
+            })
+            .map(transform)
             .collect();
 
         SpanTree {
@@ -109,7 +116,11 @@ where
     Payload: Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self { tree_depth_first, payloads, index } = self;
+        let Self {
+            tree_depth_first,
+            payloads,
+            index,
+        } = self;
         f.debug_struct("SpanTreeNode")
             .field("path", &tree_depth_first[*index])
             .field("payload", &payloads[*index])
@@ -131,30 +142,23 @@ impl<'a, Payload> SpanTreeNode<'a, Payload> {
     }
 
     pub fn root(&self) -> SpanTreeNode<'a, Payload> {
-        SpanTreeNode {
-            index: 0,
-            .. *self
-        }
+        SpanTreeNode { index: 0, ..*self }
     }
 
     pub fn parent(&self) -> Option<SpanTreeNode<'a, Payload>> {
-        self.path()
-            .parent()
-            .and_then(|parent_path| {
-                self.tree_depth_first[.. self.index].binary_search_by_key(
-                    &parent_path.span_names(),
-                    |path| path.span_names()).ok()
-                    .map(|index| {
-                        SpanTreeNode {
-                            tree_depth_first: self.tree_depth_first,
-                            payloads: self.payloads,
-                            index,
-                        }
-                    })
-            })
+        self.path().parent().and_then(|parent_path| {
+            self.tree_depth_first[..self.index]
+                .binary_search_by_key(&parent_path.span_names(), |path| path.span_names())
+                .ok()
+                .map(|index| SpanTreeNode {
+                    tree_depth_first: self.tree_depth_first,
+                    payloads: self.payloads,
+                    index,
+                })
+        })
     }
 
-    pub fn visit_children(&self) -> impl Iterator<Item=SpanTreeNode<'a, Payload>> {
+    pub fn visit_children(&self) -> impl Iterator<Item = SpanTreeNode<'a, Payload>> {
         // This is just for type inference, to make sure that we get the 'a lifetime
         // and not something tied to 'self
         let tree_depth_first: &'a [SpanPath] = self.tree_depth_first;
@@ -169,7 +173,8 @@ impl<'a, Payload> SpanTreeNode<'a, Payload> {
         // TODO: Use exponential search to avoid accidental complexity explosion for
         // very large trees? (It seems unlikely that anyone will have a tree large enough
         // to make a significant difference though)
-        self.tree_depth_first.iter()
+        self.tree_depth_first
+            .iter()
             .enumerate()
             // Start at the first potential child
             .skip(self.index + 1)

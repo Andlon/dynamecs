@@ -1,6 +1,5 @@
 use dynamecs_analyze::SpanPath;
 
-
 #[test]
 fn is_parent_of() {
     let root = span_path!();

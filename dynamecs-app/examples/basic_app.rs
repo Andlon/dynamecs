@@ -1,7 +1,7 @@
+use dynamecs::{System, Universe};
 use dynamecs_app::{dynamecs_main, Scenario};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, debug_span};
-use dynamecs::{System, Universe};
 
 #[derive(Serialize, Deserialize)]
 struct Config {}

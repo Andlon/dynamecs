@@ -1,13 +1,13 @@
-use std::cmp::max;
-use std::collections::{HashMap};
-use std::collections::hash_map::Entry;
-use std::time::Duration;
-use eyre::eyre;
-use time::OffsetDateTime;
-use RecordKind::{SpanEnter, SpanExit};
 use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
+use eyre::eyre;
+use std::cmp::max;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::fmt::Write;
 use std::iter;
+use std::time::Duration;
+use time::OffsetDateTime;
+use RecordKind::{SpanEnter, SpanExit};
 
 pub type TimingTree = SpanTree<Option<DerivedStats>>;
 type TimingTreeNode<'a> = SpanTreeNode<'a, Option<DerivedStats>>;
@@ -52,21 +52,16 @@ fn update_column_widths_for_line(column_widths: &mut Vec<usize>, line: &str) {
     }
 }
 
-fn write_table_line(
-    output: &mut String,
-    line: &str,
-    column_widths: &[usize],
-    alignments: &[Alignment],
-) {
+fn write_table_line(output: &mut String, line: &str, column_widths: &[usize], alignments: &[Alignment]) {
     let padding = 2;
     debug_assert_eq!(line.lines().count(), 1, "line string must consist of a single line");
     let alignment_iter = alignments.iter().chain(iter::repeat(&Alignment::Left));
     for ((cell, width), alignment) in line.split("\t").zip(column_widths).zip(alignment_iter) {
         match alignment {
-            Alignment::Left => write!(output, "{cell:width$}", width=width).unwrap(),
-            Alignment::Right => write!(output, "{cell: >width$}", width=width).unwrap()
+            Alignment::Left => write!(output, "{cell:width$}", width = width).unwrap(),
+            Alignment::Right => write!(output, "{cell: >width$}", width = width).unwrap(),
         }
-        for _ in 0 .. padding {
+        for _ in 0..padding {
             output.push(' ');
         }
     }
@@ -76,7 +71,7 @@ fn write_table_line(
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Alignment {
     Left,
-    Right
+    Right,
 }
 
 fn format_table(header: &str, table: &str, alignments: &[Alignment]) -> String {
@@ -110,9 +105,11 @@ pub fn format_timing_tree(tree: &TimingTree) -> String {
         write_timing_tree_node(&mut table, root, &mut vec![]);
     }
     use Alignment::{Left, Right};
-    format_table("Total\tAverage\tCount\tRel parent\tRel root\tSpan",
-                 &table,
-                 &vec![Right, Right, Right, Right, Right, Left])
+    format_table(
+        "Total\tAverage\tCount\tRel parent\tRel root\tSpan",
+        &table,
+        &vec![Right, Right, Right, Right, Right, Left],
+    )
 }
 
 fn write_proportion(output: &mut String, proportion: Option<f64>) {
@@ -124,18 +121,16 @@ fn write_proportion(output: &mut String, proportion: Option<f64>) {
     }
 }
 
-fn write_timing_tree_node(
-    output: &mut String,
-    node: TimingTreeNode,
-    active_stack: &mut Vec<bool>
-) {
+fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stack: &mut Vec<bool>) {
     let optional_stats = node.payload().as_ref();
     let duration = optional_stats.map(|stats| stats.duration);
     let count = optional_stats.map(|stats| stats.count);
     write_duration(output, duration);
     write!(output, "\t").unwrap();
 
-    let avg_duration = duration.zip(count).map(|(duration, count)| duration.div_f64(count as f64));
+    let avg_duration = duration
+        .zip(count)
+        .map(|(duration, count)| duration.div_f64(count as f64));
     write_duration(output, avg_duration);
 
     if let Some(count) = count {
@@ -213,14 +208,15 @@ pub struct AccumulatedStepTimings {
 
 impl AccumulatedTimings {
     pub fn new() -> Self {
-        Self { span_stats: Default::default() }
+        Self {
+            span_stats: Default::default(),
+        }
     }
 
-    pub fn merge_with_others<'a>(&mut self, others: impl Iterator<Item=&'a AccumulatedTimings>) {
+    pub fn merge_with_others<'a>(&mut self, others: impl Iterator<Item = &'a AccumulatedTimings>) {
         for other in others {
             for (path, stats) in &other.span_stats {
-                let current_stats = self.span_stats.entry(path.clone())
-                    .or_default();
+                let current_stats = self.span_stats.entry(path.clone()).or_default();
                 current_stats.combine_mut(&stats);
             }
         }
@@ -236,19 +232,22 @@ impl AccumulatedTimings {
         //  - there are no duplicate nodes
         //  - the paths are sorted depth-first
 
-        let mut map: HashMap<_, _> = self.span_stats
+        let mut map: HashMap<_, _> = self
+            .span_stats
             .iter()
             .map(|(path, stats)| (path.clone(), Some(stats.clone())))
             .collect();
 
         // The root node is the common ancestor of all the paths
-        let common_ancestor = self.span_stats.keys()
+        let common_ancestor = self
+            .span_stats
+            .keys()
             // TODO: This can be done much more efficiently with some manual labor
             // (i.e. start with the first element and keep knocking off names
             // so that the path is an ancestor of *all* paths)
             .fold(None, |common: Option<SpanPath>, path| match common {
                 None => Some(path.clone()),
-                Some(current_common) => Some(current_common.common_ancestor(path))
+                Some(current_common) => Some(current_common.common_ancestor(path)),
             });
 
         if let Some(common_ancestor) = common_ancestor {
@@ -273,42 +272,33 @@ impl AccumulatedTimings {
             map.entry(common_ancestor).or_insert(None);
         }
 
-        let mut path_duration_pairs: Vec<_> = map
-            .into_iter()
-            .collect();
+        let mut path_duration_pairs: Vec<_> = map.into_iter().collect();
 
         path_duration_pairs.sort_by(|pair1, pair2| pair1.0.span_names().cmp(pair2.0.span_names()));
-        let (paths_depth_first, durations) = path_duration_pairs
-            .into_iter()
-            .unzip();
+        let (paths_depth_first, durations) = path_duration_pairs.into_iter().unzip();
 
         SpanTree::try_from_depth_first_ordering(paths_depth_first, durations)
             .expect("Input should always be a valid span tree")
             .transform_payloads(|node| {
-                node.payload()
-                    .as_ref()
-                    .map(|stats| {
-                        let duration = stats.duration;
-                        DerivedStats {
-                            duration: stats.duration,
-                            count: stats.count,
-                            duration_relative_to_parent: node.parent()
-                                .and_then(|parent_node| parent_node.payload()
-                                    .as_ref()
-                                    .map(|parent_stats| {
-                                        let parent_duration = parent_stats.duration;
-                                        let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
-                                        proportion
-                                    })),
-                            duration_relative_to_root: node.root()
-                                .payload()
-                                .as_ref()
-                                .map(|root_stats| {
-                                    let root_duration = root_stats.duration;
-                                    let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
-                                    proportion
-                                })
-                        }})
+                node.payload().as_ref().map(|stats| {
+                    let duration = stats.duration;
+                    DerivedStats {
+                        duration: stats.duration,
+                        count: stats.count,
+                        duration_relative_to_parent: node.parent().and_then(|parent_node| {
+                            parent_node.payload().as_ref().map(|parent_stats| {
+                                let parent_duration = parent_stats.duration;
+                                let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
+                                proportion
+                            })
+                        }),
+                        duration_relative_to_root: node.root().payload().as_ref().map(|root_stats| {
+                            let root_duration = root_stats.duration;
+                            let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
+                            proportion
+                        }),
+                    }
+                })
             })
     }
 }
@@ -336,31 +326,36 @@ impl AccumulatedTimingSeries {
     }
 }
 
-pub fn extract_step_timings<'a>(records: impl IntoIterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
+pub fn extract_step_timings<'a>(records: impl IntoIterator<Item = Record>) -> eyre::Result<AccumulatedTimingSeries> {
     // TODO: Collect statistics from spans outside run as well
     find_and_visit_dynamecs_run_span(records.into_iter())
 }
 
-pub fn extract_timing_summary<'a>(records: impl IntoIterator<Item=Record>) -> eyre::Result<AccumulatedTimings> {
+pub fn extract_timing_summary<'a>(records: impl IntoIterator<Item = Record>) -> eyre::Result<AccumulatedTimings> {
     extract_step_timings(records).map(|series| series.summarize())
 }
 
-fn find_and_visit_dynamecs_run_span<'a>(mut records: impl Iterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
+fn find_and_visit_dynamecs_run_span<'a>(
+    mut records: impl Iterator<Item = Record>,
+) -> eyre::Result<AccumulatedTimingSeries> {
     // First try to find the `run` span in the records
     while let Some(record) = records.next() {
         if let Some(span) = record.span() {
-            if span.name() == "run"
-                && record.target() == "dynamecs_app"
-                && record.kind() == RecordKind::SpanEnter {
+            if span.name() == "run" && record.target() == "dynamecs_app" && record.kind() == RecordKind::SpanEnter {
                 return visit_dynamecs_run_span(&record, records);
             }
         }
     }
 
-    Err(eyre!("Could not find new event for `run` span of dynamecs among records"))
+    Err(eyre!(
+        "Could not find new event for `run` span of dynamecs among records"
+    ))
 }
 
-fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl Iterator<Item=Record>) -> eyre::Result<AccumulatedTimingSeries> {
+fn visit_dynamecs_run_span<'a>(
+    run_new_record: &Record,
+    remaining_records: impl Iterator<Item = Record>,
+) -> eyre::Result<AccumulatedTimingSeries> {
     let run_thread = run_new_record.thread_id();
     let mut iter = remaining_records;
     let mut steps = Vec::new();
@@ -377,17 +372,18 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
                             // Only collect complete time steps
                             steps.push(step);
                         }
-                    },
+                    }
                     // Accumulate "intransient timings", i.e. timings for things that are
                     // not inside of a step
-                    (_, _, SpanEnter) => intransient_accumulator.enter_span(
-                        record.create_span_path()?, *record.timestamp())?,
+                    (_, _, SpanEnter) => {
+                        intransient_accumulator.enter_span(record.create_span_path()?, *record.timestamp())?
+                    }
                     (span_name, record_target, SpanExit) => {
                         intransient_accumulator.exit_span(record.create_span_path()?, *record.timestamp())?;
                         if span_name == "run" && record_target == "dynamecs_app" {
                             break;
                         }
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -397,7 +393,7 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
     Ok(AccumulatedTimingSeries {
         steps,
         intransient_timings: AccumulatedTimings {
-            span_stats: intransient_accumulator.collect_completed_statistics()
+            span_stats: intransient_accumulator.collect_completed_statistics(),
         },
     })
 }
@@ -405,14 +401,15 @@ fn visit_dynamecs_run_span<'a>(run_new_record: &Record, remaining_records: impl 
 /// Returns accumulated timings for the next *complete* step in the records.
 fn visit_dynamecs_step_span<'a>(
     step_new_record: &Record,
-    remaining_records: &mut impl Iterator<Item=Record>
+    remaining_records: &mut impl Iterator<Item = Record>,
 ) -> eyre::Result<Option<AccumulatedStepTimings>> {
     let step_path = step_new_record.create_span_path()?;
 
     let mut accumulator = TimingAccumulator::new();
     accumulator.enter_span(step_path.clone(), step_new_record.timestamp().clone())?;
 
-    let step_index = step_new_record.span()
+    let step_index = step_new_record
+        .span()
         .and_then(|span| span.fields().pointer("/step_index"))
         .and_then(|value| value.as_u64())
         .ok_or_else(|| eyre!("step span does not have step_index field"))?;
@@ -422,18 +419,14 @@ fn visit_dynamecs_step_span<'a>(
             if let Some(span) = record.span() {
                 match record.kind() {
                     SpanEnter => {
-                        accumulator.enter_span(record.create_span_path()?,
-                                               record.timestamp().clone())?;
-                    },
+                        accumulator.enter_span(record.create_span_path()?, record.timestamp().clone())?;
+                    }
                     SpanExit => {
                         // TODO: use a stack to verify that open/close events are consistent?
                         let span_path = record.create_span_path()?;
                         let is_step_span_path = span_path == step_path;
-                        accumulator.exit_span(span_path,
-                                              record.timestamp().clone())?;
-                        if span.name() == "step"
-                            && record.target() == "dynamecs_app"
-                            && is_step_span_path {
+                        accumulator.exit_span(span_path, record.timestamp().clone())?;
+                        if span.name() == "step" && record.target() == "dynamecs_app" && is_step_span_path {
                             break;
                         }
                     }
@@ -450,8 +443,10 @@ fn visit_dynamecs_step_span<'a>(
         Ok(None)
     } else {
         Ok(Some(AccumulatedStepTimings {
-            timings: AccumulatedTimings { span_stats: accumulator.collect_completed_statistics() },
-            step_index
+            timings: AccumulatedTimings {
+                span_stats: accumulator.collect_completed_statistics(),
+            },
+            step_index,
         }))
     }
 }
@@ -464,7 +459,10 @@ struct TimingAccumulator {
 
 impl TimingAccumulator {
     pub fn new() -> Self {
-        Self { completed_statistics: Default::default(), enter_timestamps: Default::default() }
+        Self {
+            completed_statistics: Default::default(),
+            enter_timestamps: Default::default(),
+        }
     }
 
     pub fn enter_span(&mut self, path: SpanPath, timestamp: OffsetDateTime) -> eyre::Result<()> {
@@ -472,18 +470,22 @@ impl TimingAccumulator {
             Entry::Vacant(vacancy) => {
                 vacancy.insert(timestamp);
                 Ok(())
-            },
-            Entry::Occupied(old) => Err(eyre!("tried to create new span {} that is already active\
-                                               (not closed)", old.key())),
+            }
+            Entry::Occupied(old) => Err(eyre!(
+                "tried to create new span {} that is already active\
+                                               (not closed)",
+                old.key()
+            )),
         }
     }
 
     pub fn exit_span(&mut self, path: SpanPath, timestamp_close: OffsetDateTime) -> eyre::Result<()> {
-        let timestamp_enter = self.enter_timestamps.remove(&path)
+        let timestamp_enter = self
+            .enter_timestamps
+            .remove(&path)
             .ok_or_else(|| eyre!("found close event for span that is not currently active. Span path: {path}"))?;
         let span_duration: Duration = (timestamp_close - timestamp_enter).unsigned_abs();
-        let accumulated_stats = self.completed_statistics.entry(path)
-            .or_default();
+        let accumulated_stats = self.completed_statistics.entry(path).or_default();
         accumulated_stats.combine_mut(&DirectStats::from_single_duration(span_duration));
         Ok(())
     }
@@ -496,4 +498,3 @@ impl TimingAccumulator {
         self.completed_statistics
     }
 }
-

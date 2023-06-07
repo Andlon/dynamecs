@@ -1,8 +1,8 @@
+use dynamecs_analyze::{iterate_records, iterate_records_from_reader, write_records, Record, RecordBuilder};
 use escargot::CargoBuild;
 use insta::assert_snapshot;
 use tempfile::tempdir;
 use time::{Date, Month, UtcOffset};
-use dynamecs_analyze::{iterate_records, iterate_records_from_reader, Record, RecordBuilder, write_records};
 
 fn replace_middle(s: &str, prefix: &str, suffix: &str, replacement: &str) -> Option<String> {
     s.strip_prefix(prefix)
@@ -37,11 +37,11 @@ fn redact_records(records: &[Record]) -> Vec<Record> {
         .with_hms(08, 00, 00)
         .unwrap()
         .assume_offset(UtcOffset::from_hms(02, 00, 00).unwrap());
-    records.iter()
+    records
+        .iter()
         .cloned()
         .map(|record| {
-            let message_override = record.message()
-                .map(|message| redact_message(message));
+            let message_override = record.message().map(|message| redact_message(message));
 
             let mut builder = RecordBuilder::from_record(record)
                 .timestamp(arbitrary_timestamp)
