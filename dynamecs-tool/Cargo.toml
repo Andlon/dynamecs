@@ -1,0 +1,15 @@
+[package]
+name = "dynamecs-tool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version="4.3.0", features = [ "derive" ] }
+dynamecs-analyze = { path = "../dynamecs-analyze" }
+
+[dev-dependencies]
+insta = "1.29.0"
+escargot = "0.5.7"
+tempfile = "3.5.0"
+regex = "1.8.3"
+
