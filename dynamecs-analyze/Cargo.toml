@@ -2,6 +2,9 @@
 name = "dynamecs-analyze"
 version = "0.0.1"
 edition = "2021"
+description = "Functionality for working with dynamecs-app log files."
+license = "MIT"
+repository = "https://github.com/Andlon/dynamecs"
 
 [dependencies]
 serde = { version = "1.0.159", features = ["derive"] }
