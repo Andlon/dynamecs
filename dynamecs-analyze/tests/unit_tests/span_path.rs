@@ -50,20 +50,19 @@ fn is_ancestor_of() {
     let bc = span_path!("b", "c");
 
     {
+        assert!(root.is_ancestor_of(&root));
         assert!(root.is_ancestor_of(&a));
         assert!(root.is_ancestor_of(&b));
         assert!(root.is_ancestor_of(&ab));
         assert!(root.is_ancestor_of(&ac));
         assert!(root.is_ancestor_of(&bc));
-
-        assert!(!root.is_ancestor_of(&root));
     }
 
     {
+        assert!(a.is_ancestor_of(&a));
         assert!(a.is_ancestor_of(&ab));
         assert!(a.is_ancestor_of(&ac));
 
-        assert!(!a.is_ancestor_of(&a));
         assert!(!a.is_ancestor_of(&b));
         assert!(!a.is_ancestor_of(&bc));
     }
@@ -77,20 +76,20 @@ fn common_ancestor() {
     let ref b = span_path!("b");
     let ref ac = span_path!("a", "c");
 
-    assert_eq!(root.common_ancestor(&root), None);
-    assert_eq!(root.common_ancestor(&a), None);
-    assert_eq!(a.common_ancestor(&root), None);
-    assert_eq!(root.common_ancestor(&ab), None);
-    assert_eq!(ab.common_ancestor(&root), None);
+    assert_eq!(&root.common_ancestor(&root), root);
+    assert_eq!(&root.common_ancestor(&a), root);
+    assert_eq!(&a.common_ancestor(&root), root);
+    assert_eq!(&root.common_ancestor(&ab), root);
+    assert_eq!(&ab.common_ancestor(&root), root);
 
-    assert_eq!(a.common_ancestor(&a), Some(root.clone()));
-    assert_eq!(a.common_ancestor(&ab), Some(root.clone()));
-    assert_eq!(ab.common_ancestor(&a), Some(root.clone()));
+    assert_eq!(&a.common_ancestor(&a), a);
+    assert_eq!(&a.common_ancestor(&ab), a);
+    assert_eq!(&ab.common_ancestor(&a), a);
 
-    assert_eq!(a.common_ancestor(&b), Some(root.clone()));
+    assert_eq!(&a.common_ancestor(&b), root);
 
-    assert_eq!(ab.common_ancestor(&ab), Some(a.clone()));
+    assert_eq!(&ab.common_ancestor(&ab), ab);
 
-    assert_eq!(ab.common_ancestor(&ac), Some(a.clone()));
-    assert_eq!(ac.common_ancestor(&ab), Some(a.clone()));
+    assert_eq!(&ab.common_ancestor(&ac), a);
+    assert_eq!(&ac.common_ancestor(&ab), a);
 }

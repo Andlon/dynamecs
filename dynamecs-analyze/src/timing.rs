@@ -9,8 +9,8 @@ use crate::{Record, RecordKind, SpanPath, SpanTree, SpanTreeNode};
 use std::fmt::Write;
 use std::iter;
 
-pub type TimingTree = SpanTree<DerivedStats>;
-type TimingTreeNode<'a> = SpanTreeNode<'a, DerivedStats>;
+pub type TimingTree = SpanTree<Option<DerivedStats>>;
+type TimingTreeNode<'a> = SpanTreeNode<'a, Option<DerivedStats>>;
 
 /// Statistics measured directly from logs.
 #[derive(Debug, Clone, Default)]
@@ -106,7 +106,9 @@ fn format_table(header: &str, table: &str, alignments: &[Alignment]) -> String {
 
 pub fn format_timing_tree(tree: &TimingTree) -> String {
     let mut table = String::new();
-    write_timing_tree_node(&mut table, tree.root(), &mut vec![]);
+    if let Some(root) = tree.root() {
+        write_timing_tree_node(&mut table, root, &mut vec![]);
+    }
     use Alignment::{Left, Right};
     format_table("Total\tAverage\tCount\tRel parent\tRel root\tSpan",
                  &table,
@@ -127,18 +129,27 @@ fn write_timing_tree_node(
     node: TimingTreeNode,
     active_stack: &mut Vec<bool>
 ) {
-    let duration = node.payload().duration;
-    let count = node.payload().count;
-    write_duration(output, &duration);
+    let optional_stats = node.payload().as_ref();
+    let duration = optional_stats.map(|stats| stats.duration);
+    let count = optional_stats.map(|stats| stats.count);
+    write_duration(output, duration);
     write!(output, "\t").unwrap();
-    write_duration(output, &duration.div_f64(count as f64));
 
-    write!(output, "\t{count}").unwrap();
+    let avg_duration = duration.zip(count).map(|(duration, count)| duration.div_f64(count as f64));
+    write_duration(output, avg_duration);
+
+    if let Some(count) = count {
+        write!(output, "\t{count}").unwrap();
+    } else {
+        write!(output, "\tN/A").unwrap();
+    }
 
     write!(output, "\t").unwrap();
-    write_proportion(output, node.payload().duration_relative_to_parent);
+    let duration_relative_to_parent = optional_stats.and_then(|stats| stats.duration_relative_to_parent);
+    write_proportion(output, duration_relative_to_parent);
     write!(output, "\t").unwrap();
-    write_proportion(output, node.payload().duration_relative_to_root);
+    let duration_relative_to_root = optional_stats.and_then(|stats| stats.duration_relative_to_root);
+    write_proportion(output, duration_relative_to_root);
 
     write!(output, "\t").unwrap();
     if let Some((&parent_is_active, predecessors)) = active_stack.split_last() {
@@ -156,7 +167,7 @@ fn write_timing_tree_node(
         }
     }
 
-    writeln!(output, "{}", node.path().span_name().unwrap_or("no name? Fix, TODO")).unwrap();
+    writeln!(output, "{}", node.path().span_name().unwrap_or("<root span>")).unwrap();
     let num_children = node.count_children();
     for (child_idx, child) in node.visit_children().enumerate() {
         // We say that an ancestor is "active" if it's not yet processing its last child.
@@ -170,18 +181,22 @@ fn write_timing_tree_node(
 }
 
 // TODO: Unit tests for this one?
-fn write_duration(output: &mut String, duration: &Duration) {
-    let secs = duration.as_secs_f64();
-    if 1e-9 <= secs && secs < 1e-6 {
-        write!(output, "{:5.1} ns", secs / 1e-9).unwrap();
-    } else if 1e-6 <= secs && secs < 1e-3 {
-        write!(output, "{:5.1} μs", secs / 1e-6).unwrap();
-    } else if 1e-3 <= secs && secs < 1.0 {
-        write!(output, "{:5.1} ms", secs / 1e-3).unwrap();
-    } else if 1.0 <= secs && secs < 1e3 {
-        write!(output, "{:5.1} s ", secs).unwrap();
+fn write_duration(output: &mut String, duration: Option<Duration>) {
+    if let Some(duration) = duration {
+        let secs = duration.as_secs_f64();
+        if 1e-9 <= secs && secs < 1e-6 {
+            write!(output, "{:5.1} ns", secs / 1e-9).unwrap();
+        } else if 1e-6 <= secs && secs < 1e-3 {
+            write!(output, "{:5.1} μs", secs / 1e-6).unwrap();
+        } else if 1e-3 <= secs && secs < 1.0 {
+            write!(output, "{:5.1} ms", secs / 1e-3).unwrap();
+        } else if 1.0 <= secs && secs < 1e3 || secs == 0.0 {
+            write!(output, "{:5.1} s ", secs).unwrap();
+        } else {
+            write!(output, "{:5.1e} s ", secs).unwrap();
+        }
     } else {
-        write!(output, "{:5.1e} s ", secs).unwrap();
+        write!(output, "   N/A   ").unwrap();
     }
 }
 
@@ -214,32 +229,86 @@ impl AccumulatedTimings {
 
 impl AccumulatedTimings {
     pub fn create_timing_tree(&self) -> TimingTree {
-        let (paths, durations) = self.span_stats
+        // The path entries present in the map might not form a valid span tree.
+        // Therefore, we have to ensure that:
+        //  - there's a root node
+        //  - that every node except the root has its parent also present in the tree
+        //  - there are no duplicate nodes
+        //  - the paths are sorted depth-first
+
+        let mut map: HashMap<_, _> = self.span_stats
             .iter()
-            .map(|(path, duration)| (path.clone(), duration.clone()))
-            .unzip();
-        SpanTree::from_paths_and_payloads(paths, durations)
-            .transform_payloads(|node| {
-                let stats = node.payload();
-                let duration = stats.duration;
-                DerivedStats {
-                    duration: stats.duration,
-                    count: stats.count,
-                    duration_relative_to_parent: node.parent()
-                        .map(|parent_node| {
-                            let parent_duration = parent_node.payload().duration;
-                            let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
-                            proportion
-                        }),
-                    duration_relative_to_root: Some(node.root())
-                        // TODO: There will always be a root at the moment,\
-                        // but we'll probably later have root nodes with an optional Duration"
-                        .map(|root_node| {
-                            let root_duration = root_node.payload().duration;
-                            let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
-                            proportion
-                        })
+            .map(|(path, stats)| (path.clone(), Some(stats.clone())))
+            .collect();
+
+        // The root node is the common ancestor of all the paths
+        let common_ancestor = self.span_stats.keys()
+            // TODO: This can be done much more efficiently with some manual labor
+            // (i.e. start with the first element and keep knocking off names
+            // so that the path is an ancestor of *all* paths)
+            .fold(None, |common: Option<SpanPath>, path| match common {
+                None => Some(path.clone()),
+                Some(current_common) => Some(current_common.common_ancestor(path))
+            });
+
+        if let Some(common_ancestor) = common_ancestor {
+            // Insert all "intermediate nodes". For example, if the hash map contains
+            // a>b>c, then try to insert a>b and a, provided they don't "extend past"
+            // the common ancestor
+            for mut path in self.span_stats.keys().cloned() {
+                while let Some(parent_path) = path.parent() {
+                    if parent_path.depth() < common_ancestor.depth() {
+                        break;
+                    } else {
+                        if !map.contains_key(&parent_path) {
+                            map.insert(parent_path.clone(), None);
+                        }
+                        path = parent_path;
+                    }
                 }
+            }
+
+            // The paths may form a forest, not a tree. We therefore insert the common
+            // ancestor, which will function as the root of the tree.
+            map.entry(common_ancestor).or_insert(None);
+        }
+
+        let mut path_duration_pairs: Vec<_> = map
+            .into_iter()
+            .collect();
+
+        path_duration_pairs.sort_by(|pair1, pair2| pair1.0.span_names().cmp(pair2.0.span_names()));
+        let (paths_depth_first, durations) = path_duration_pairs
+            .into_iter()
+            .unzip();
+
+        SpanTree::try_from_depth_first_ordering(paths_depth_first, durations)
+            .expect("Input should always be a valid span tree")
+            .transform_payloads(|node| {
+                node.payload()
+                    .as_ref()
+                    .map(|stats| {
+                        let duration = stats.duration;
+                        DerivedStats {
+                            duration: stats.duration,
+                            count: stats.count,
+                            duration_relative_to_parent: node.parent()
+                                .and_then(|parent_node| parent_node.payload()
+                                    .as_ref()
+                                    .map(|parent_stats| {
+                                        let parent_duration = parent_stats.duration;
+                                        let proportion = duration.as_secs_f64() / parent_duration.as_secs_f64();
+                                        proportion
+                                    })),
+                            duration_relative_to_root: node.root()
+                                .payload()
+                                .as_ref()
+                                .map(|root_stats| {
+                                    let root_duration = root_stats.duration;
+                                    let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
+                                    proportion
+                                })
+                        }})
             })
     }
 }

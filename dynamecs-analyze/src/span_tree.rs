@@ -31,68 +31,51 @@ impl SpanTreeError {
 }
 
 impl<Payload> SpanTree<Payload> {
-    pub fn root(&self) -> SpanTreeNode<Payload> {
-        // TODO: Ensure that the first entry is always the root in the tree
+    pub fn root(&self) -> Option<SpanTreeNode<Payload>> {
         debug_assert_eq!(self.tree_depth_first.len(), self.payloads.len());
-        assert!(self.tree_depth_first.len() > 0);
-        SpanTreeNode {
+        (!self.tree_depth_first.is_empty()).then(|| SpanTreeNode {
             tree_depth_first: &self.tree_depth_first,
             payloads: &self.payloads,
             index: 0,
-        }
+        })
     }
 
     pub fn try_from_depth_first_ordering(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Result<Self, SpanTreeError> {
-        let (root, others) = paths.split_first()
-            // TODO: Should we support empty trees?
-            .ok_or_else(|| SpanTreeError::message("there must be at least one path in the tree"))?;
-        let mut stack = Vec::new();
-        for name in root.span_names() {
-            stack.push(name.as_str());
-        }
-
-        for path in others {
-            let num_common_names = izip!(&stack, path.span_names())
-                .take_while(|(&stack_name, path_name)| stack_name == path_name.as_str())
-                .count();
-
-            if num_common_names < root.depth() {
-                return Err(SpanTreeError::message("first path is not an ancestor of all other nodes"));
+        if let Some((root, others)) = paths.split_first() {
+            let mut stack = Vec::new();
+            for name in root.span_names() {
+                stack.push(name.as_str());
             }
 
-            stack.truncate(num_common_names);
+            for path in others {
+                let num_common_names = izip!(&stack, path.span_names())
+                    .take_while(|(&stack_name, path_name)| stack_name == path_name.as_str())
+                    .count();
 
-            if path.depth() > num_common_names + 1 {
-                return Err(SpanTreeError::message("intermediate nodes missing"));
-            } else if path.depth() == num_common_names + 1 {
-                stack.push(path.span_name().unwrap());
-            } else if path.depth() == num_common_names {
-                return Err(SpanTreeError::message("duplicate paths detected"));
-            } else if path.depth() < num_common_names {
-                unreachable!()
+                stack.truncate(num_common_names);
+                if num_common_names < root.depth() {
+                    return Err(SpanTreeError::message("first path is not an ancestor of all other nodes"));
+                }
+
+                if path.depth() > num_common_names + 1 {
+                    return Err(SpanTreeError::message("a non-root node is missing its parent"));
+                } else if path.depth() == num_common_names + 1 {
+                    stack.push(path.span_name().unwrap());
+                } else if path.depth() == num_common_names {
+                    return Err(SpanTreeError::message("duplicate paths detected"));
+                } else {
+                    unreachable!("by definition, path depth cannot be smaller \
+                              than the number of common span names")
+                }
             }
         }
+
 
         assert_eq!(paths.len(), payloads.len());
         Ok(Self {
             tree_depth_first: paths,
             payloads
         })
-    }
-
-    pub fn from_paths_and_payloads(paths: Vec<SpanPath>, payloads: Vec<Payload>) -> Self {
-        assert_eq!(paths.len(), payloads.len());
-        let mut path_payload_pairs: Vec<_> = paths.into_iter()
-            .zip(payloads)
-            .collect();
-        path_payload_pairs.sort_by(|pair1, pair2| pair1.0.span_names().cmp(pair2.0.span_names()));
-        let (tree_depth_first, payloads) = path_payload_pairs
-            .into_iter()
-            .unzip();
-        Self {
-            tree_depth_first,
-            payloads
-        }
     }
 
     /// Return an identical tree in which the payload associated with each node
@@ -108,7 +91,10 @@ impl<Payload> SpanTree<Payload> {
             }).map(transform)
             .collect();
 
-        SpanTree::from_paths_and_payloads(self.tree_depth_first.clone(), new_payloads)
+        SpanTree {
+            tree_depth_first: self.tree_depth_first.clone(),
+            payloads: new_payloads,
+        }
     }
 }
 

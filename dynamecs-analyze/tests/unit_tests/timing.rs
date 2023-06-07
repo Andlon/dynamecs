@@ -12,6 +12,7 @@ fn synthetic_records1() -> Vec<Record> {
 
     // Define helper functions to create spans
     let run = || Span::from_name_and_fields("run", obj.clone());
+    let init = || Span::from_name_and_fields("init", obj.clone());
     let step = |i: i64| Span::from_name_and_fields("step", json!({ "step_index": i }));
     let simulate = || Span::from_name_and_fields("simulate", obj.clone());
     let assemble = || Span::from_name_and_fields("assemble", obj.clone());
@@ -32,6 +33,21 @@ fn synthetic_records1() -> Vec<Record> {
             .span(run())
             .spans(vec![run()])
             .target("dynamecs_app"),
+        // Enter "init" span. This exercises a corner cases for incomplete logs
+        // (where "run" has not been exited but there's another span adjacent to step)
+        RecordBuilder::span_enter()
+            .debug()
+            .timestamp(next_date.current())
+            .span(init())
+            .spans(vec![run(), init()])
+            .target("target_init"),
+        // Exit "init" span
+        RecordBuilder::span_exit()
+            .debug()
+            .timestamp(next_date.current())
+            .span(init())
+            .spans(vec![run()])
+            .target("target_init"),
         // Enter timestep 0
         RecordBuilder::span_enter()
             .info()
@@ -231,9 +247,7 @@ fn test_extract_step_timings_synthetic1_incomplete() -> Result<(), Box<dyn Error
     insta::assert_snapshot!(format_timing_tree(&tree0));
 
     let summary = timings.summarize().create_timing_tree();
-    // Since the summary is incomplete, and there's only one step,
-    // the summary of a single step is just equivalent to the single step
-    assert_eq!(format_timing_tree(&summary), format_timing_tree(&tree0));
+    insta::assert_snapshot!(format_timing_tree(&summary));
 
     Ok(())
 }

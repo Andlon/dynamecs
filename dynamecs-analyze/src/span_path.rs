@@ -29,36 +29,38 @@ impl SpanPath {
     }
 
     pub fn is_parent_of(&self, other: &SpanPath) -> bool {
-        other.ancestor_names()
-            .map(|ancestor_names| self.span_names() == ancestor_names)
-            .unwrap_or(false)
+        let n = self.span_names()
+            .iter()
+            .zip(other.span_names())
+            .take_while(|(self_name, other_name)| self_name == other_name)
+            .count();
+        n == self.span_names().len()
+            && n + 1 == other.span_names().len()
     }
 
+    /// Determines if this path is an ancestor of another path.
+    ///
+    /// A path is an ancestor of itself.
     pub fn is_ancestor_of(&self, other: &SpanPath) -> bool {
-        other.ancestor_names()
-            .map(|ancestor_names| {
-                let n = self.span_names.len();
-                n <= ancestor_names.len() && self.span_names() == &other.span_names()[..n]
-            }).unwrap_or(false)
+        let n = self.span_names()
+            .iter()
+            .zip(other.span_names())
+            .take_while(|(self_name, other_name)| self_name == other_name)
+            .count();
+        n == self.span_names().len()
     }
 
-    fn ancestor_names(&self) -> Option<&[String]> {
-        match self.span_names.len() {
-            0 => None,
-            n => Some(&self.span_names[..(n - 1)])
-        }
-    }
-
-    pub fn common_ancestor(&self, other: &SpanPath) -> Option<SpanPath> {
-        self.ancestor_names()
-            .zip(other.ancestor_names())
-            .map(|(self_ancestor_names, other_ancestor_names)| {
-                let n_common = self_ancestor_names.iter()
-                    .zip(other_ancestor_names)
-                    .take_while(|(span1, span2)| span1 == span2)
-                    .count();
-                SpanPath::new(self.span_names()[..n_common].to_vec())
-            })
+    /// Determines the common ancestor of this path and another path.
+    ///
+    /// A path is an ancestor of itself.
+    pub fn common_ancestor(&self, other: &SpanPath) -> SpanPath {
+        let common_span_names = self.span_names()
+            .iter()
+            .zip(other.span_names())
+            .map_while(|(self_name, other_name)| (self_name == other_name).then(|| self_name))
+            .cloned()
+            .collect();
+        SpanPath::new(common_span_names)
     }
 
     pub fn push_span_name(&mut self, span_name: String) {

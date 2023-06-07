@@ -3,10 +3,19 @@ use dynamecs_analyze::{SpanPath, SpanTree};
 #[test]
 fn span_tree_valid_trees() -> Result<(), Box<dyn std::error::Error>> {
     {
+        // Empty tree
+        let paths = vec![];
+        let payloads: Vec<()> = vec![];
+
+        let tree = SpanTree::try_from_depth_first_ordering(paths, payloads)?;
+        assert!(tree.root().is_none());
+    }
+
+    {
         let paths = vec![ SpanPath::new(vec![]) ];
         let payloads = vec![0];
         let tree = SpanTree::try_from_depth_first_ordering(paths, payloads)?;
-        let root = tree.root();
+        let root = tree.root().unwrap();
         assert_eq!(root.path(), SpanPath::new(vec![]));
         assert_eq!(root.payload(), &0);
         assert_eq!(root.count_children(), 0);
@@ -19,7 +28,7 @@ fn span_tree_valid_trees() -> Result<(), Box<dyn std::error::Error>> {
                           span_path!("a", "b", "d", "e")];
         let payloads = vec![ "ab", "abc", "abd", "abde" ];
         let tree = SpanTree::try_from_depth_first_ordering(paths, payloads)?;
-        let ab = tree.root();
+        let ab = tree.root().unwrap();
         assert_eq!(ab.payload(), &"ab");
         assert_eq!(ab.count_children(), 2);
 
