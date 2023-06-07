@@ -1,0 +1,13 @@
+[package]
+name = "test-apps"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dynamecs = { path = "../dynamecs" }
+dynamecs-app = { path = "../dynamecs-app" }
+serde = { version = "1.0.163", features = ["derive"] }
+
+# Empty workspace table to prevent this crate from being picked up by
+# the top-level workspace
+[workspace]
