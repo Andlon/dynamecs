@@ -126,7 +126,7 @@ pub fn setup_tracing() -> eyre::Result<TracingGuard> {
     let working_dir = std::env::current_dir().wrap_err("failed to retrieve current working directory")?;
     info!(target: "dynamecs_app", "Working directory: {}", working_dir.display());
     info!(target: "dynamecs_app", "Logging text to stdout with log level {}", cli_options.console_log_level.to_string());
-    info!(target: "dymamecs_app", "Logging text to file {} with log level {}", log_file_path.display(), cli_options.file_log_level);
+    info!(target: "dynamecs_app", "Logging text to file {} with log level {}", log_file_path.display(), cli_options.file_log_level);
     info!(target: "dynamecs_app", "Logging JSON to file {} with log level {}", json_log_file_path.display(), cli_options.file_log_level);
     if cli_options.archive_logs {
         info!(target: "dynamecs_app", "Archived log file path:  {}", archive_log_file_path.display());
