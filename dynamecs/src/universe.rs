@@ -228,7 +228,7 @@ impl Universe {
     /// # Examples
     /// ```rust
     ///# use dynamecs::{Component, Universe};
-    ///# use dynamecs::storages::VecStorage;
+    ///# use dynamecs::storages::vec_storage::VecStorage;
     ///# use std::default::Default;
     ///# use serde::{Serialize, Deserialize};
     ///# #[derive(Serialize, Deserialize)]
@@ -259,7 +259,7 @@ impl Universe {
     /// # Examples
     /// ```rust
     ///# use dynamecs::{Component, Universe};
-    ///# use dynamecs::storages::VecStorage;
+    ///# use dynamecs::storages::vec_storage::VecStorage;
     ///# use std::default::Default;
     ///# use serde::{Serialize, Deserialize};
     ///# #[derive(Serialize, Deserialize)]
@@ -288,7 +288,7 @@ impl Universe {
     ///
     /// ```
     ///# use dynamecs::{Component, Universe};
-    ///# use dynamecs::storages::VecStorage;
+    ///# use dynamecs::storages::vec_storage::VecStorage;
     ///# use std::default::Default;
     ///# use serde::{Serialize, Deserialize};
     ///# #[derive(Serialize, Deserialize)]
@@ -322,7 +322,7 @@ impl Universe {
     ///
     /// ```
     ///# use dynamecs::{Component, Universe};
-    ///# use dynamecs::storages::VecStorage;
+    ///# use dynamecs::storages::vec_storage::VecStorage;
     ///# use std::default::Default;
     ///# use serde::{Serialize, Deserialize};
     ///# #[derive(Serialize, Deserialize)]
