@@ -1,6 +1,7 @@
 use crate::join::IntoJoinable;
 use crate::storages::vec_storage::VecStorageJoinable;
-use crate::storages::{VecStorage, Version, VersionedVecStorage};
+use crate::storages::Version;
+use crate::storages::{VecStorage, VersionedVecStorage};
 use crate::{Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity};
 use std::ops::Deref;
 

@@ -1,11 +1,19 @@
 //! Various component storages.
 use crate::Entity;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+mod version_impl;
+
 pub mod vec_storage;
 pub mod versioned_vec_storage;
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound = "")]
+pub struct Version<T> {
+    version: u64,
+    marker: PhantomData<T>,
+}
 
 /// A storage that stores its components in a [`Vec`].
 ///
@@ -15,68 +23,6 @@ pub struct VecStorage<Component> {
     components: Vec<Component>,
     entities: Vec<Entity>,
     lookup_table: HashMap<Entity, usize>,
-}
-
-#[derive(Debug, Eq, Hash, Ord, serde::Serialize, serde::Deserialize)]
-pub struct Version<T> {
-    version: u64,
-    marker: PhantomData<T>,
-}
-
-impl<T> PartialEq for Version<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.version == other.version
-    }
-}
-
-impl<T> PartialOrd for Version<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.version.partial_cmp(&other.version)
-    }
-}
-
-impl<T> Default for Version<T> {
-    fn default() -> Self {
-        Self {
-            version: u64::default(),
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Clone for Version<T> {
-    fn clone(&self) -> Self {
-        Self {
-            version: self.version,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Copy for Version<T> {}
-
-impl<T> Version<T> {
-    pub fn new() -> Self {
-        Self {
-            version: 0,
-            marker: PhantomData,
-        }
-    }
-
-    pub fn next(&self) -> Self {
-        let new_rev = self
-            .version
-            .checked_add(1)
-            .expect("Revision overflowed u64");
-        Self {
-            version: new_rev,
-            ..*self
-        }
-    }
-
-    pub fn advance(&mut self) {
-        *self = self.next()
-    }
 }
 
 /// A *versioned* variant of [`VecStorage`].
