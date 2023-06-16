@@ -8,7 +8,7 @@ publish = true
 description = "An opinionated ECS-like architecture for time-dependent simulations"
 
 [dependencies]
-dynamecs = { path = "../dynamecs", version = "0.0.2" }
+dynamecs = { path = "../dynamecs", version = "0.0.3" }
 clap = { version = "4.1.4", features = [ "derive" ] }
 serde = "1.0.127"
 serde_json = "1.0.66"
