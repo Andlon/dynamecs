@@ -8,6 +8,7 @@ pub use entity::*;
 pub use universe::*;
 
 pub mod adapters;
+pub mod cache;
 pub mod components;
 mod entity;
 pub mod fetch;

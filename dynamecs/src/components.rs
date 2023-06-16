@@ -1,6 +1,6 @@
 //! Predefined components commonly used by simulators.
-
-use crate::storages::{ImmutableSingularStorage, SingularStorage, VecStorage};
+use crate::storages::VecStorage;
+use crate::storages::{ImmutableSingularStorage, SingularStorage};
 use crate::{register_component, Component, Universe};
 use eyre::eyre;
 use serde::{Deserialize, Serialize};

@@ -1,16 +1,7 @@
-//! Various component storages.
-
-use std::collections::HashMap;
-
 use crate::join::{IntoJoinable, Joinable};
+use crate::storages::VecStorage;
 use crate::{Entity, GetComponentForEntity, GetComponentForEntityMut, InsertComponentForEntity};
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct VecStorage<Component> {
-    components: Vec<Component>,
-    entities: Vec<Entity>,
-    lookup_table: HashMap<Entity, usize>,
-}
+use std::collections::HashMap;
 
 /// Stores component in a vector, with a one-to-one relationship between entities and components.
 impl<Component> VecStorage<Component> {
@@ -60,19 +51,6 @@ impl<Component> VecStorage<Component> {
         index
     }
 
-    /// Removes the component associated with the given entity, if it exists.
-    ///
-    /// Returns `true` if a component was removed, otherwise `false`.
-    pub fn remove_entity(&mut self, id: &Entity) -> bool {
-        if let Some(index) = self.lookup_table.remove(id) {
-            self.entities.remove(index);
-            self.components.remove(index);
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn clear(&mut self) {
         self.entities.clear();
         self.components.clear();
@@ -108,13 +86,11 @@ impl<Component> VecStorage<Component> {
     }
 }
 
-// TODO: Move to vec_storage module?
 pub struct VecStorageEntityComponentIter<'a, Component> {
     // We keep the inner iterator as an implementation detail so that we can swap it out if required later on
     inner_iter: std::iter::Zip<std::iter::Copied<std::slice::Iter<'a, Entity>>, std::slice::Iter<'a, Component>>,
 }
 
-// TODO: Move to vec_storage module?
 pub struct VecStorageEntityComponentIterMut<'a, Component> {
     // We keep the inner iterator as an implementation detail so that we can swap it out if required later on
     inner_iter: std::iter::Zip<std::iter::Copied<std::slice::Iter<'a, Entity>>, std::slice::IterMut<'a, Component>>,
@@ -158,42 +134,6 @@ impl<C> GetComponentForEntityMut<C> for VecStorage<C> {
     fn get_component_for_entity_mut(&mut self, id: Entity) -> Option<&mut C> {
         let index = self.get_index(id)?;
         self.components.get_mut(index)
-    }
-}
-
-/// A Storage that stores a single component without any Entity relation.
-#[derive(Debug, Copy, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct SingularStorage<Component> {
-    component: Component,
-}
-
-impl<Component> SingularStorage<Component> {
-    pub fn new(component: Component) -> Self {
-        Self { component }
-    }
-
-    pub fn get_component(&self) -> &Component {
-        &self.component
-    }
-
-    pub fn get_component_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-}
-
-/// A Storage that stores a single *immutable* component without any Entity relation.
-#[derive(Debug, Copy, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct ImmutableSingularStorage<Component> {
-    component: Component,
-}
-
-impl<Component> ImmutableSingularStorage<Component> {
-    pub fn new(component: Component) -> Self {
-        Self { component }
-    }
-
-    pub fn get_component(&self) -> &Component {
-        &self.component
     }
 }
 
