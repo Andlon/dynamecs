@@ -60,19 +60,6 @@ impl<Component> VecStorage<Component> {
         index
     }
 
-    /// Removes the component associated with the given entity, if it exists.
-    ///
-    /// Returns `true` if a component was removed, otherwise `false`.
-    pub fn remove_entity(&mut self, id: &Entity) -> bool {
-        if let Some(index) = self.lookup_table.remove(id) {
-            self.entities.remove(index);
-            self.components.remove(index);
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn clear(&mut self) {
         self.entities.clear();
         self.components.clear();
