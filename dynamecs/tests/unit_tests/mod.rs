@@ -2,6 +2,7 @@ mod adapters;
 mod basic_api;
 mod join;
 mod serialization;
+mod versioned_vec_storage;
 
 pub mod dummy_components {
     use dynamecs::storages::VecStorage;

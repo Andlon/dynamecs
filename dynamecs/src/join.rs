@@ -1,9 +1,10 @@
 //! Functionality that enables the Join API.
 use crate::storages::{
     vec_storage::{VecStorageEntityComponentIter, VecStorageEntityComponentIterMut},
-    VecStorage,
+    VecStorage, VersionedVecStorage,
 };
 use crate::Entity;
+use std::ops::Deref;
 
 pub trait IntoJoinable<'a> {
     type Joinable: Joinable<'a>;
@@ -176,5 +177,31 @@ impl<'a, C> Join for &'a VecStorage<C> {
 
     fn join(self) -> Self::Iter {
         self.entity_component_iter()
+    }
+}
+
+macro_rules! impl_versioned_vec_storage_tuple_join {
+    ($($joinables:ident),*) => {
+        impl_vec_storage_tuple_join_base!(&'a VersionedVecStorage<C>,
+            VecStorageEntityComponentIter<'a, C>,
+            storage => storage.deref().entity_component_iter(),
+            $($joinables),*);
+    }
+}
+
+impl_versioned_vec_storage_tuple_join!();
+impl_versioned_vec_storage_tuple_join!(J1);
+impl_versioned_vec_storage_tuple_join!(J1, J2);
+impl_versioned_vec_storage_tuple_join!(J1, J2, J3);
+impl_versioned_vec_storage_tuple_join!(J1, J2, J3, J4);
+impl_versioned_vec_storage_tuple_join!(J1, J2, J3, J4, J5);
+impl_versioned_vec_storage_tuple_join!(J1, J2, J3, J4, J5, J6);
+impl_versioned_vec_storage_tuple_join!(J1, J2, J3, J4, J5, J6, J7);
+
+impl<'a, Component> Join for &'a VersionedVecStorage<Component> {
+    type Iter = VecStorageEntityComponentIter<'a, Component>;
+
+    fn join(self) -> Self::Iter {
+        self.deref().join()
     }
 }
