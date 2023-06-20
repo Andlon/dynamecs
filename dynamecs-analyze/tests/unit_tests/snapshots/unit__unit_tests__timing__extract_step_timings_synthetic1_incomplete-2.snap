@@ -2,13 +2,13 @@
 source: dynamecs-analyze/tests/unit_tests/timing.rs
 expression: format_timing_tree(&summary)
 ---
-Total      Average    Count  Rel parent  Rel root  Span                        
-════════════════════════════════════════════════════════════════════════════════
-   N/A        N/A       N/A         N/A       N/A  run                         
-   0.0 s      0.0 s       1         N/A       N/A  ├── init                    
-   8.0 s      8.0 s       1         N/A       N/A  └── step                    
-   6.0 s      6.0 s       1      75.0 %       N/A      └── simulate            
-   3.0 s      3.0 s       1      50.0 %       N/A          ├── assemble        
-   2.0 s      2.0 s       1      33.3 %       N/A          └── solve           
-════════════════════════════════════════════════════════════════════════════════
+Total      Average    Self     Count  Rel parent  Rel root  Span                        
+═════════════════════════════════════════════════════════════════════════════════════════
+   N/A        N/A         N/A    N/A         N/A      N/A   run                         
+   0.0 s      0.0 s       N/A      1         N/A      N/A   ├── init                    
+   8.0 s      8.0 s    25.0 %      1         N/A      N/A   └── step                    
+   6.0 s      6.0 s    16.7 %      1      75.0 %      N/A       └── simulate            
+   3.0 s      3.0 s   100.0 %      1      50.0 %      N/A           ├── assemble        
+   2.0 s      2.0 s   100.0 %      1      33.3 %      N/A           └── solve           
+═════════════════════════════════════════════════════════════════════════════════════════
 

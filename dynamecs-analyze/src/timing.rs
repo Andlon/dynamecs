@@ -38,6 +38,8 @@ pub struct DerivedStats {
     pub count: u64,
     pub duration_relative_to_parent: Option<f64>,
     pub duration_relative_to_root: Option<f64>,
+    pub self_duration: Option<Duration>,
+    pub self_relative: Option<f64>,
 }
 
 fn update_column_widths_for_line(column_widths: &mut Vec<usize>, line: &str) {
@@ -106,7 +108,7 @@ pub fn format_timing_tree(tree: &TimingTree) -> String {
     }
     use Alignment::{Left, Right};
     format_table(
-        "Total\tAverage\tCount\tRel parent\tRel root\tSpan",
+        "Total\tAverage\tSelf\tCount\tRel parent\tRel root\tSpan",
         &table,
         &vec![Right, Right, Right, Right, Right, Left],
     )
@@ -132,6 +134,10 @@ fn write_timing_tree_node(output: &mut String, node: TimingTreeNode, active_stac
         .zip(count)
         .map(|(duration, count)| duration.div_f64(count as f64));
     write_duration(output, avg_duration);
+    write!(output, "\t").unwrap();
+
+    let self_relative = optional_stats.and_then(|stats| stats.self_relative);
+    write_proportion(output, self_relative);
 
     if let Some(count) = count {
         write!(output, "\t{count}").unwrap();
@@ -282,6 +288,18 @@ impl AccumulatedTimings {
             .transform_payloads(|node| {
                 node.payload().as_ref().map(|stats| {
                     let duration = stats.duration;
+                    let maybe_children_duration = node.visit_children()
+                        .map(|child| child.payload().as_ref().map(|stats| stats.duration))
+                        // We only return a "children time" if all children actually have a duration
+                        .fold(Some(Duration::default()),
+                              |acc, maybe_duration| acc.zip(maybe_duration).map(|(a, b)| a + b));
+                    let self_duration = maybe_children_duration
+                        .map(|children_duration| duration - children_duration);
+                    let self_relative = self_duration
+                        .map(|self_time| self_time.as_secs_f64() / duration.as_secs_f64())
+                        // If duration is zero, we get a NaN. Return None instead in this case
+                        .filter(|proportion| proportion.is_finite());
+
                     DerivedStats {
                         duration: stats.duration,
                         count: stats.count,
@@ -297,6 +315,8 @@ impl AccumulatedTimings {
                             let proportion = duration.as_secs_f64() / root_duration.as_secs_f64();
                             proportion
                         }),
+                        self_duration,
+                        self_relative
                     }
                 })
             })
