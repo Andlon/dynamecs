@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 clap = { version="4.3.0", features = [ "derive" ] }
-dynamecs-analyze = { version = "0.0.1", path = "../dynamecs-analyze" }
+dynamecs-analyze = { version = "0.0.2", path = "../dynamecs-analyze" }
 
 [dev-dependencies]
 insta = "1.29.0"

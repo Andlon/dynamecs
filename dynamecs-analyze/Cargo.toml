@@ -1,6 +1,6 @@
 [package]
 name = "dynamecs-analyze"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 description = "Functionality for working with dynamecs-app log files."
 license = "MIT"
