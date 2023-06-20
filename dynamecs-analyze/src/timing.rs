@@ -288,13 +288,14 @@ impl AccumulatedTimings {
             .transform_payloads(|node| {
                 node.payload().as_ref().map(|stats| {
                     let duration = stats.duration;
-                    let maybe_children_duration = node.visit_children()
+                    let maybe_children_duration = node
+                        .visit_children()
                         .map(|child| child.payload().as_ref().map(|stats| stats.duration))
                         // We only return a "children time" if all children actually have a duration
-                        .fold(Some(Duration::default()),
-                              |acc, maybe_duration| acc.zip(maybe_duration).map(|(a, b)| a + b));
-                    let self_duration = maybe_children_duration
-                        .map(|children_duration| duration - children_duration);
+                        .fold(Some(Duration::default()), |acc, maybe_duration| {
+                            acc.zip(maybe_duration).map(|(a, b)| a + b)
+                        });
+                    let self_duration = maybe_children_duration.map(|children_duration| duration - children_duration);
                     let self_relative = self_duration
                         .map(|self_time| self_time.as_secs_f64() / duration.as_secs_f64())
                         // If duration is zero, we get a NaN. Return None instead in this case
@@ -316,7 +317,7 @@ impl AccumulatedTimings {
                             proportion
                         }),
                         self_duration,
-                        self_relative
+                        self_relative,
                     }
                 })
             })

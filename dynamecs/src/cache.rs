@@ -42,7 +42,8 @@ impl<Version, T> VersionedEntityCache<Version, T> {
             if version == cache_version {
                 self.map.insert(entity, (version, value));
             } else if version != cache_version {
-                self.map.insert(entity, (version, value_fn(Some((cache_version, value)))?));
+                self.map
+                    .insert(entity, (version, value_fn(Some((cache_version, value)))?));
             }
         } else {
             self.map.insert(entity, (version, value_fn(None)?));
