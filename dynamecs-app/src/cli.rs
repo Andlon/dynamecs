@@ -61,6 +61,9 @@ pub struct CliOptions {
     pub compress_logs: bool,
     #[arg(long = "no-archive", help = "Disable timestamped archive logs.", action = clap::ArgAction::SetFalse)]
     pub archive_logs: bool,
-    #[arg(long = "allow-unknown-config", help = "Allow unknown fields in scenario configuration. This is disabled by default in order to prevent ignoring misspelled keys or similar mistakes.")]
+    #[arg(
+        long = "allow-unknown-config",
+        help = "Allow unknown fields in scenario configuration. This is disabled by default in order to prevent ignoring misspelled keys or similar mistakes."
+    )]
     pub allow_unknown_config: bool,
 }
