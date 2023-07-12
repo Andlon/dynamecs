@@ -275,11 +275,13 @@ impl DynamecsApp<()> {
 
         // Emit warnings whenever we run into JSON fields that are not part of the
         // configuration
+        let mut unknown_fields = false;
         let config: Config = serde_ignored::deserialize(&config_json, |path| {
             warn!(
                 "Ignored unknown field {} during deserialization of configuration",
                 path.to_string()
             );
+            unknown_fields = true;
         })
         .wrap_err_with(|| {
             let json_str = serde_json::to_string_pretty(&config_json)
@@ -289,6 +291,10 @@ impl DynamecsApp<()> {
                 into a valid configuration: \n{json_str}"
             )
         })?;
+
+        if unknown_fields && !opt.allow_unknown_config {
+            return Err(eyre!("There were unknown fields in the configuration. Please fix provided config or see --help for how to ignore unknown fields."));
+        }
 
         // TODO: We use serde_json because json5 cannot pretty-print JSON, and unfortunately
         // its serializer is limited to producing JSON
